@@ -20,6 +20,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { ReadProjectView } from "@/components/project/read-view";
 import { FullscreenReader } from "@/components/project/fullscreen-reader";
+import { PrintDialog } from "@/components/project/print-dialog";
 import { ExpandableSection } from "@/components/ui/expandable-section";
 import {
   Plus,
@@ -31,6 +32,7 @@ import {
   ChevronDown,
   List,
   Maximize2,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -50,6 +52,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [deletingChapterId, setDeletingChapterId] = useState<string | null>(null);
   const [fullscreenRead, setFullscreenRead] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
 
   if (!project) return null;
 
@@ -265,7 +268,11 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
 
         {activeTab === "read" && (
           <div className="py-4">
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-end gap-2 mb-4">
+              <Button variant="ghost" size="sm" onClick={() => setShowPrintDialog(true)}>
+                <Printer size={14} />
+                Print
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => setFullscreenRead(true)}>
                 <Maximize2 size={14} />
                 Fullscreen
@@ -303,6 +310,14 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
             </div>
           </div>
         </Dialog>
+
+        {/* Print Dialog */}
+        <PrintDialog
+          open={showPrintDialog}
+          onClose={() => setShowPrintDialog(false)}
+          projectId={projectId}
+          projectTitle={project.title}
+        />
 
         {/* Delete Chapter Confirmation */}
         <Dialog open={!!deletingChapterId} onClose={() => setDeletingChapterId(null)}>
