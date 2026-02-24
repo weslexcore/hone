@@ -1,22 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils/cn';
-import {
-  LayoutDashboard,
-  PenTool,
-  Timer,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils/cn";
+import { LayoutDashboard, PenTool, Timer, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 
 const navItems = [
-  { href: '/dashboard', label: 'Projects', icon: LayoutDashboard },
-  { href: '/practice', label: 'Practice', icon: Timer },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: "/dashboard", label: "Projects", icon: LayoutDashboard },
+  { href: "/practice", label: "Practice", icon: Timer },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -26,8 +19,8 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex flex-col border-r border-border bg-surface-raised transition-all duration-200',
-        collapsed ? 'w-16' : 'w-56'
+        "flex flex-col border-r border-border bg-surface-raised transition-all duration-200",
+        collapsed ? "w-16" : "w-56",
       )}
     >
       {/* Logo */}
@@ -45,18 +38,17 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(item.href + '/');
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 isActive
-                  ? 'bg-accent-muted text-accent'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                  ? "bg-accent-muted text-accent"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-hover",
               )}
             >
               <Icon size={18} className="shrink-0" />

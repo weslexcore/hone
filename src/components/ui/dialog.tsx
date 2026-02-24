@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, type ReactNode } from 'react';
-import { cn } from '@/lib/utils/cn';
-import { X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useEffect, useRef, type ReactNode } from "react";
+import { cn } from "@/lib/utils/cn";
+import { X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface DialogProps {
   open: boolean;
@@ -17,15 +17,15 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
     if (open) {
-      document.addEventListener('keydown', handler);
-      document.body.style.overflow = 'hidden';
+      document.addEventListener("keydown", handler);
+      document.body.style.overflow = "hidden";
     }
     return () => {
-      document.removeEventListener('keydown', handler);
-      document.body.style.overflow = '';
+      document.removeEventListener("keydown", handler);
+      document.body.style.overflow = "";
     };
   }, [open, onClose]);
 
@@ -46,8 +46,8 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
           <div className="fixed inset-0 bg-black/60" />
           <motion.div
             className={cn(
-              'relative z-10 w-full max-w-md rounded-xl border border-border bg-surface-raised p-6 shadow-2xl',
-              className
+              "relative z-10 w-full max-w-md rounded-xl border border-border bg-surface-raised p-6 shadow-2xl",
+              className,
             )}
             initial={{ opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -70,6 +70,6 @@ export function Dialog({ open, onClose, children, className }: DialogProps) {
 
 export function DialogTitle({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={cn('text-lg font-semibold text-text-primary mb-4', className)}>{children}</h2>
+    <h2 className={cn("text-lg font-semibold text-text-primary mb-4", className)}>{children}</h2>
   );
 }

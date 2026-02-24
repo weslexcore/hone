@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
+import { use, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import {
   useProject,
   useChapters,
@@ -10,17 +10,17 @@ import {
   createChapter,
   deleteChapter,
   updateChapter,
-} from '@/lib/db/hooks';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogTitle } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { Card } from '@/components/ui/card';
-import { useToast } from '@/components/ui/toast';
-import { ReadProjectView } from '@/components/project/read-view';
-import { FullscreenReader } from '@/components/project/fullscreen-reader';
-import { ExpandableSection } from '@/components/ui/expandable-section';
+} from "@/lib/db/hooks";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
+import { ReadProjectView } from "@/components/project/read-view";
+import { FullscreenReader } from "@/components/project/fullscreen-reader";
+import { ExpandableSection } from "@/components/ui/expandable-section";
 import {
   Plus,
   Trash2,
@@ -31,27 +31,23 @@ import {
   ChevronDown,
   List,
   Maximize2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+} from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 
-type ProjectTab = 'manage' | 'read';
+type ProjectTab = "manage" | "read";
 
-export default function ProjectPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
+export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
   const router = useRouter();
   const project = useProject(projectId);
   const chapters = useChapters(projectId);
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<ProjectTab>('manage');
+  const [activeTab, setActiveTab] = useState<ProjectTab>("manage");
   const [editingTitle, setEditingTitle] = useState(false);
-  const [titleInput, setTitleInput] = useState('');
+  const [titleInput, setTitleInput] = useState("");
   const [showCreateChapter, setShowCreateChapter] = useState(false);
-  const [newChapterTitle, setNewChapterTitle] = useState('');
+  const [newChapterTitle, setNewChapterTitle] = useState("");
   const [deletingChapterId, setDeletingChapterId] = useState<string | null>(null);
   const [fullscreenRead, setFullscreenRead] = useState(false);
 
@@ -60,7 +56,7 @@ export default function ProjectPage({
   const handleTitleSave = async () => {
     if (titleInput.trim()) {
       await updateProject(projectId, { title: titleInput.trim() });
-      toast('Title updated', 'success');
+      toast("Title updated", "success");
     }
     setEditingTitle(false);
   };
@@ -69,20 +65,20 @@ export default function ProjectPage({
     if (!newChapterTitle.trim()) return;
     const id = await createChapter(projectId, { title: newChapterTitle.trim() });
     setShowCreateChapter(false);
-    setNewChapterTitle('');
-    toast('Chapter created', 'success');
+    setNewChapterTitle("");
+    toast("Chapter created", "success");
     router.push(`/project/${projectId}/${id}`);
   };
 
   const handleDeleteChapter = async (id: string) => {
     await deleteChapter(id);
     setDeletingChapterId(null);
-    toast('Chapter deleted', 'info');
+    toast("Chapter deleted", "info");
   };
 
-  const handleReorder = async (index: number, direction: 'up' | 'down') => {
+  const handleReorder = async (index: number, direction: "up" | "down") => {
     if (!chapters) return;
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= chapters.length) return;
 
     await updateChapter(chapters[index].id, { sortOrder: targetIndex });
@@ -90,8 +86,8 @@ export default function ProjectPage({
   };
 
   const tabs: { id: ProjectTab; label: string; icon: typeof List }[] = [
-    { id: 'manage', label: 'Chapters', icon: List },
-    { id: 'read', label: 'Read', icon: BookOpen },
+    { id: "manage", label: "Chapters", icon: List },
+    { id: "read", label: "Read", icon: BookOpen },
   ];
 
   return (
@@ -108,7 +104,7 @@ export default function ProjectPage({
               value={titleInput}
               onChange={(e) => setTitleInput(e.target.value)}
               onBlur={handleTitleSave}
-              onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+              onKeyDown={(e) => e.key === "Enter" && handleTitleSave()}
               autoFocus
               className="text-2xl font-semibold"
             />
@@ -139,10 +135,10 @@ export default function ProjectPage({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
                   activeTab === tab.id
-                    ? 'text-accent border-accent'
-                    : 'text-text-muted hover:text-text-secondary border-transparent'
+                    ? "text-accent border-accent"
+                    : "text-text-muted hover:text-text-secondary border-transparent",
                 )}
               >
                 <Icon size={15} />
@@ -153,7 +149,7 @@ export default function ProjectPage({
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'manage' && (
+        {activeTab === "manage" && (
           <>
             <div className="space-y-3 mb-6">
               {/* Description */}
@@ -228,7 +224,7 @@ export default function ProjectPage({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleReorder(index, 'up');
+                          handleReorder(index, "up");
                         }}
                         disabled={index === 0}
                         className="p-1 text-text-muted hover:text-text-primary disabled:opacity-30"
@@ -238,7 +234,7 @@ export default function ProjectPage({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleReorder(index, 'down');
+                          handleReorder(index, "down");
                         }}
                         disabled={index === chapters.length - 1}
                         className="p-1 text-text-muted hover:text-text-primary disabled:opacity-30"
@@ -267,14 +263,10 @@ export default function ProjectPage({
           </>
         )}
 
-        {activeTab === 'read' && (
+        {activeTab === "read" && (
           <div className="py-4">
             <div className="flex justify-end mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFullscreenRead(true)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setFullscreenRead(true)}>
                 <Maximize2 size={14} />
                 Fullscreen
               </Button>
@@ -295,13 +287,17 @@ export default function ProjectPage({
               onChange={(e) => setNewChapterTitle(e.target.value)}
               placeholder="Chapter title"
               autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateChapter()}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateChapter()}
             />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowCreateChapter(false)}>
                 Cancel
               </Button>
-              <Button variant="primary" onClick={handleCreateChapter} disabled={!newChapterTitle.trim()}>
+              <Button
+                variant="primary"
+                onClick={handleCreateChapter}
+                disabled={!newChapterTitle.trim()}
+              >
                 Create
               </Button>
             </div>

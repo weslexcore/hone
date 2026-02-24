@@ -1,4 +1,8 @@
-export function writingSuggestionsPrompt(sceneContent: string, projectContext?: string, existingSuggestions?: string[]) {
+export function writingSuggestionsPrompt(
+  sceneContent: string,
+  projectContext?: string,
+  existingSuggestions?: string[],
+) {
   let systemPrompt = `You are an expert writing coach and editor. Analyze the provided text and return suggestions in JSON format.
 
 Return a JSON array of suggestion objects with these fields:
@@ -13,7 +17,7 @@ Focus on actionable, specific improvements. Limit to 5-8 suggestions. Prioritize
 Return ONLY the JSON array, no other text.`;
 
   if (existingSuggestions && existingSuggestions.length > 0) {
-    systemPrompt += `\n\nIMPORTANT: The following suggestions have already been given to the writer. Do NOT repeat these or make suggestions along the same lines. Focus on NEW, DIFFERENT aspects of the writing:\n${existingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+    systemPrompt += `\n\nIMPORTANT: The following suggestions have already been given to the writer. Do NOT repeat these or make suggestions along the same lines. Focus on NEW, DIFFERENT aspects of the writing:\n${existingSuggestions.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
   }
 
   let userMessage = `Please analyze this writing:\n\n${sceneContent}`;
@@ -44,7 +48,7 @@ Return a JSON array of issue objects with these fields:
 Focus on actual contradictions, not stylistic preferences. Return ONLY the JSON array.`;
 
   if (existingSuggestions && existingSuggestions.length > 0) {
-    systemPrompt += `\n\nIMPORTANT: The following issues have already been identified. Do NOT repeat these or flag the same issues again. Focus on NEW, DIFFERENT consistency problems:\n${existingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+    systemPrompt += `\n\nIMPORTANT: The following issues have already been identified. Do NOT repeat these or flag the same issues again. Focus on NEW, DIFFERENT consistency problems:\n${existingSuggestions.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
   }
 
   const userMessage = `Please check this manuscript for consistency issues:\n\n${allScenesContent}`;
@@ -63,9 +67,10 @@ The prompt should:
 
 Return ONLY the prompt text. No preamble or explanation. Keep it to 2-4 sentences.`;
 
-  const userMessage = genres.length > 0
-    ? `Generate a creative writing prompt in these genres: ${genres.join(', ')}`
-    : `Generate a creative writing prompt. Choose any genre or style that would make for an interesting writing exercise.`;
+  const userMessage =
+    genres.length > 0
+      ? `Generate a creative writing prompt in these genres: ${genres.join(", ")}`
+      : `Generate a creative writing prompt. Choose any genre or style that would make for an interesting writing exercise.`;
 
   return { systemPrompt, userMessage };
 }
@@ -115,16 +120,16 @@ Return ONLY the JSON array, no other text.`;
 }
 
 export function formatPromptForCopy(
-  type: 'suggestion' | 'consistency' | 'prompt_generation' | 'grading' | 'scene_extraction',
+  type: "suggestion" | "consistency" | "prompt_generation" | "grading" | "scene_extraction",
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
 ): string {
   const labels: Record<string, string> = {
-    suggestion: 'Writing Analysis',
-    consistency: 'Consistency Check',
-    prompt_generation: 'Generate Writing Prompt',
-    grading: 'Grade Writing Exercise',
-    scene_extraction: 'Extract Scenes from Chapter',
+    suggestion: "Writing Analysis",
+    consistency: "Consistency Check",
+    prompt_generation: "Generate Writing Prompt",
+    grading: "Grade Writing Exercise",
+    scene_extraction: "Extract Scenes from Chapter",
   };
 
   return `--- ${labels[type]} ---

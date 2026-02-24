@@ -1,6 +1,6 @@
-const STORAGE_KEY = 'hone_theme';
+const STORAGE_KEY = "hone_theme";
 
-export type ThemeId = 'default' | 'deep-black' | 'parchment';
+export type ThemeId = "default" | "deep-black" | "parchment";
 
 export interface ThemeInfo {
   id: ThemeId;
@@ -9,18 +9,22 @@ export interface ThemeInfo {
 }
 
 export const THEMES: ThemeInfo[] = [
-  { id: 'default', label: 'Warm Dark', description: 'Muted dark grays with warm gold accent' },
-  { id: 'deep-black', label: 'Deep Black', description: 'True black backgrounds for OLED displays' },
-  { id: 'parchment', label: 'Parchment', description: 'Warm light tones inspired by aged paper' },
+  { id: "default", label: "Warm Dark", description: "Muted dark grays with warm gold accent" },
+  {
+    id: "deep-black",
+    label: "Deep Black",
+    description: "True black backgrounds for OLED displays",
+  },
+  { id: "parchment", label: "Parchment", description: "Warm light tones inspired by aged paper" },
 ];
 
 function isBrowser() {
-  return typeof window !== 'undefined';
+  return typeof window !== "undefined";
 }
 
 export function getTheme(): ThemeId {
-  if (!isBrowser()) return 'default';
-  return (localStorage.getItem(STORAGE_KEY) as ThemeId) || 'default';
+  if (!isBrowser()) return "default";
+  return (localStorage.getItem(STORAGE_KEY) as ThemeId) || "default";
 }
 
 export function setTheme(theme: ThemeId): void {

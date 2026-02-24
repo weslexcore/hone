@@ -1,19 +1,23 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { X, Sparkles, Copy, Check, Loader2, Trash2, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { PasteAIResponse } from '@/components/ai/paste-ai-response';
-import { useAI } from '@/providers/ai-provider';
-import { useScene } from '@/lib/db/hooks';
-import { db } from '@/lib/db/index';
-import { stripCodeFences } from '@/lib/ai/client';
-import { writingSuggestionsPrompt, consistencyCheckPrompt, formatPromptForCopy } from '@/lib/ai/prompts';
-import type { AISuggestion, SavedSuggestionBatch } from '@/types/ai';
-import { cn } from '@/lib/utils/cn';
-import { nanoid } from 'nanoid';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useCallback } from "react";
+import { motion } from "motion/react";
+import { X, Sparkles, Copy, Check, Loader2, Trash2, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PasteAIResponse } from "@/components/ai/paste-ai-response";
+import { useAI } from "@/providers/ai-provider";
+import { useScene } from "@/lib/db/hooks";
+import { db } from "@/lib/db/index";
+import { stripCodeFences } from "@/lib/ai/client";
+import {
+  writingSuggestionsPrompt,
+  consistencyCheckPrompt,
+  formatPromptForCopy,
+} from "@/lib/ai/prompts";
+import type { AISuggestion, SavedSuggestionBatch } from "@/types/ai";
+import { cn } from "@/lib/utils/cn";
+import { nanoid } from "nanoid";
+import { useLiveQuery } from "dexie-react-hooks";
 
 interface AIPanelProps {
   sceneId?: string;
@@ -33,55 +37,47 @@ function formatDate(date: Date) {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (mins < 1) return 'Just now';
+  if (mins < 1) return "Just now";
   if (mins < 60) return `${mins}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIPanelProps) {
-  const scene = useScene(sceneId || '');
+  const scene = useScene(sceneId || "");
   const { hasKey, sendRequest, isLoading, error } = useAI();
   const [parseError, setParseError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'suggestions' | 'consistency'>('suggestions');
+  const [activeTab, setActiveTab] = useState<"suggestions" | "consistency">("suggestions");
 
   // The target for saving/loading suggestion batches
-  const targetId = sceneId || chapterId || '';
-  const targetType: 'scene' | 'chapter' = sceneId ? 'scene' : 'chapter';
+  const targetId = sceneId || chapterId || "";
+  const targetType: "scene" | "chapter" = sceneId ? "scene" : "chapter";
 
   // Load saved batches from IndexedDB
-  const savedBatches = useLiveQuery(
-    async () => {
-      if (!targetId) return [] as SavedSuggestionBatch[];
-      const batches = await db.suggestionBatches
-        .where('targetId')
-        .equals(targetId)
-        .toArray();
-      // Sort newest first
-      return batches.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    },
-    [targetId]
-  );
+  const savedBatches = useLiveQuery(async () => {
+    if (!targetId) return [] as SavedSuggestionBatch[];
+    const batches = await db.suggestionBatches.where("targetId").equals(targetId).toArray();
+    // Sort newest first
+    return batches.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [targetId]);
 
   // Filter batches by active tab
-  const filteredBatches = (savedBatches || []).filter(
-    (b) => b.analysisType === activeTab
-  );
+  const filteredBatches = (savedBatches || []).filter((b) => b.analysisType === activeTab);
 
   const getSceneText = useCallback(() => {
     if (getText) return getText();
-    if (!scene?.contentHtml) return '';
-    const div = document.createElement('div');
+    if (!scene?.contentHtml) return "";
+    const div = document.createElement("div");
     div.innerHTML = scene.contentHtml;
-    return div.textContent || '';
+    return div.textContent || "";
   }, [scene, getText]);
 
   const saveBatch = useCallback(
-    async (suggestions: AISuggestion[], analysisType: 'suggestions' | 'consistency') => {
+    async (suggestions: AISuggestion[], analysisType: "suggestions" | "consistency") => {
       const batch: SavedSuggestionBatch = {
         id: nanoid(),
         targetId,
@@ -94,29 +90,32 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
       };
       await db.suggestionBatches.add(batch);
     },
-    [targetId, targetType, projectId]
+    [targetId, targetType, projectId],
   );
 
   // Collect existing non-dismissed suggestion summaries for deduplication
-  const getExistingSuggestionSummaries = useCallback((analysisType: 'suggestions' | 'consistency') => {
-    const batches = (savedBatches || []).filter((b) => b.analysisType === analysisType);
-    const summaries: string[] = [];
-    for (const batch of batches) {
-      for (const s of batch.suggestions) {
-        if (!batch.dismissedIds.includes(s.id)) {
-          summaries.push(`${s.title}: ${s.description}`);
+  const getExistingSuggestionSummaries = useCallback(
+    (analysisType: "suggestions" | "consistency") => {
+      const batches = (savedBatches || []).filter((b) => b.analysisType === analysisType);
+      const summaries: string[] = [];
+      for (const batch of batches) {
+        for (const s of batch.suggestions) {
+          if (!batch.dismissedIds.includes(s.id)) {
+            summaries.push(`${s.title}: ${s.description}`);
+          }
         }
       }
-    }
-    return summaries;
-  }, [savedBatches]);
+      return summaries;
+    },
+    [savedBatches],
+  );
 
   const handleAnalyze = useCallback(async () => {
     const text = getSceneText();
     if (!text.trim()) return;
 
     setParseError(null);
-    const existing = getExistingSuggestionSummaries('suggestions');
+    const existing = getExistingSuggestionSummaries("suggestions");
     const { systemPrompt, userMessage } = writingSuggestionsPrompt(text, undefined, existing);
 
     try {
@@ -128,30 +127,30 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
         id: `suggestion-${nanoid(6)}-${i}`,
         confidence: s.confidence ?? 0.8,
       }));
-      await saveBatch(suggestions, 'suggestions');
+      await saveBatch(suggestions, "suggestions");
     } catch (err) {
       if (err instanceof SyntaxError) {
-        setParseError('Failed to parse AI response. Try again.');
+        setParseError("Failed to parse AI response. Try again.");
       }
     }
   }, [getSceneText, sendRequest, saveBatch, getExistingSuggestionSummaries]);
 
   const handleConsistencyCheck = useCallback(async () => {
-    const allScenes = await db.scenes.where('projectId').equals(projectId).toArray();
+    const allScenes = await db.scenes.where("projectId").equals(projectId).toArray();
     const allText = allScenes
       .map((s) => {
-        if (!s.contentHtml) return '';
-        const div = document.createElement('div');
+        if (!s.contentHtml) return "";
+        const div = document.createElement("div");
         div.innerHTML = s.contentHtml;
-        return `--- ${s.title} ---\n${div.textContent || ''}`;
+        return `--- ${s.title} ---\n${div.textContent || ""}`;
       })
       .filter(Boolean)
-      .join('\n\n');
+      .join("\n\n");
 
     if (!allText.trim()) return;
 
     setParseError(null);
-    const existing = getExistingSuggestionSummaries('consistency');
+    const existing = getExistingSuggestionSummaries("consistency");
     const { systemPrompt, userMessage } = consistencyCheckPrompt(allText, existing);
 
     try {
@@ -163,23 +162,20 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
         id: `consistency-${nanoid(6)}-${i}`,
         confidence: s.confidence ?? 0.8,
       }));
-      await saveBatch(suggestions, 'consistency');
+      await saveBatch(suggestions, "consistency");
     } catch (err) {
       if (err instanceof SyntaxError) {
-        setParseError('Failed to parse AI response. Try again.');
+        setParseError("Failed to parse AI response. Try again.");
       }
     }
   }, [projectId, sendRequest, saveBatch, getExistingSuggestionSummaries]);
 
-  const handleDismissSuggestion = useCallback(
-    async (batchId: string, suggestionId: string) => {
-      const batch = await db.suggestionBatches.get(batchId);
-      if (!batch) return;
-      const updated = [...batch.dismissedIds, suggestionId];
-      await db.suggestionBatches.update(batchId, { dismissedIds: updated });
-    },
-    []
-  );
+  const handleDismissSuggestion = useCallback(async (batchId: string, suggestionId: string) => {
+    const batch = await db.suggestionBatches.get(batchId);
+    if (!batch) return;
+    const updated = [...batch.dismissedIds, suggestionId];
+    await db.suggestionBatches.update(batchId, { dismissedIds: updated });
+  }, []);
 
   const handleDeleteBatch = useCallback(async (batchId: string) => {
     await db.suggestionBatches.delete(batchId);
@@ -191,14 +187,14 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
 
     const existing = getExistingSuggestionSummaries(activeTab);
     const promptData =
-      activeTab === 'suggestions'
+      activeTab === "suggestions"
         ? writingSuggestionsPrompt(text, undefined, existing)
         : consistencyCheckPrompt(text, existing);
 
     const formatted = formatPromptForCopy(
-      activeTab === 'suggestions' ? 'suggestion' : 'consistency',
+      activeTab === "suggestions" ? "suggestion" : "consistency",
       promptData.systemPrompt,
-      promptData.userMessage
+      promptData.userMessage,
     );
 
     await navigator.clipboard.writeText(formatted);
@@ -212,9 +208,9 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
         const arr = Array.isArray(data) ? data : [data];
         const suggestions = arr.map((s: Record<string, unknown>, i: number) => ({
           id: `pasted-${nanoid(6)}-${i}`,
-          type: (s.type as AISuggestion['type']) ?? 'general',
-          title: (s.title as string) ?? 'Suggestion',
-          description: (s.description as string) ?? '',
+          type: (s.type as AISuggestion["type"]) ?? "general",
+          title: (s.title as string) ?? "Suggestion",
+          description: (s.description as string) ?? "",
           originalText: s.originalText as string | undefined,
           suggestedText: s.suggestedText as string | undefined,
           confidence: (s.confidence as number) ?? 0.8,
@@ -224,7 +220,7 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
         // invalid shape, ignore
       }
     },
-    [saveBatch, activeTab]
+    [saveBatch, activeTab],
   );
 
   const apiKeyConfigured = hasKey();
@@ -252,23 +248,23 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
         {/* Tabs */}
         <div className="flex border-b border-border">
           <button
-            onClick={() => setActiveTab('suggestions')}
+            onClick={() => setActiveTab("suggestions")}
             className={cn(
-              'flex-1 px-4 py-2 text-xs font-medium transition-colors',
-              activeTab === 'suggestions'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-text-muted hover:text-text-secondary'
+              "flex-1 px-4 py-2 text-xs font-medium transition-colors",
+              activeTab === "suggestions"
+                ? "text-accent border-b-2 border-accent"
+                : "text-text-muted hover:text-text-secondary",
             )}
           >
             Suggestions
           </button>
           <button
-            onClick={() => setActiveTab('consistency')}
+            onClick={() => setActiveTab("consistency")}
             className={cn(
-              'flex-1 px-4 py-2 text-xs font-medium transition-colors',
-              activeTab === 'consistency'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-text-muted hover:text-text-secondary'
+              "flex-1 px-4 py-2 text-xs font-medium transition-colors",
+              activeTab === "consistency"
+                ? "text-accent border-b-2 border-accent"
+                : "text-text-muted hover:text-text-secondary",
             )}
           >
             Consistency
@@ -282,7 +278,7 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
               variant="primary"
               size="sm"
               className="w-full"
-              onClick={activeTab === 'suggestions' ? handleAnalyze : handleConsistencyCheck}
+              onClick={activeTab === "suggestions" ? handleAnalyze : handleConsistencyCheck}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -293,17 +289,12 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
               ) : (
                 <>
                   <Sparkles size={14} />
-                  {activeTab === 'suggestions' ? 'Analyze Writing' : 'Check Consistency'}
+                  {activeTab === "suggestions" ? "Analyze Writing" : "Check Consistency"}
                 </>
               )}
             </Button>
           ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full"
-              onClick={handleCopyForAI}
-            >
+            <Button variant="secondary" size="sm" className="w-full" onClick={handleCopyForAI}>
               {copied ? (
                 <>
                   <Check size={14} className="text-success" />
@@ -319,13 +310,14 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
           )}
           {!apiKeyConfigured && (
             <p className="text-xs text-text-muted mt-2 text-center">
-              No API key configured. Copy the prompt to use with your own AI service, or add a key in Settings.
+              No API key configured. Copy the prompt to use with your own AI service, or add a key
+              in Settings.
             </p>
           )}
           {!apiKeyConfigured && (
             <PasteAIResponse
               onParsed={handlePastedResponse}
-              expectedShape={'JSON array of { type, title, description, suggestedText }'}
+              expectedShape={"JSON array of { type, title, description, suggestedText }"}
               className="mt-3"
             />
           )}
@@ -343,7 +335,7 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
             <div className="space-y-5">
               {filteredBatches.map((batch) => {
                 const visibleSuggestions = batch.suggestions.filter(
-                  (s) => !batch.dismissedIds.includes(s.id)
+                  (s) => !batch.dismissedIds.includes(s.id),
                 );
                 if (visibleSuggestions.length === 0) return null;
 
@@ -355,7 +347,9 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
                         <Clock size={10} />
                         {formatDate(batch.createdAt)}
                         <span className="text-text-muted/50">·</span>
-                        <span>{visibleSuggestions.length}/{batch.suggestions.length}</span>
+                        <span>
+                          {visibleSuggestions.length}/{batch.suggestions.length}
+                        </span>
                       </div>
                       <button
                         onClick={() => handleDeleteBatch(batch.id)}
@@ -411,9 +405,9 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
             <div className="text-center py-8">
               <Sparkles size={24} className="mx-auto text-text-muted mb-2" />
               <p className="text-xs text-text-muted">
-                {activeTab === 'suggestions'
-                  ? 'Click Analyze to get writing suggestions'
-                  : 'Click Check to find consistency issues'}
+                {activeTab === "suggestions"
+                  ? "Click Analyze to get writing suggestions"
+                  : "Click Check to find consistency issues"}
               </p>
             </div>
           ) : null}

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
-import { X } from 'lucide-react';
+import { useEffect, useCallback } from "react";
+import { motion } from "motion/react";
+import { X } from "lucide-react";
 
 interface FullscreenReaderProps {
   open: boolean;
@@ -13,19 +13,19 @@ interface FullscreenReaderProps {
 export function FullscreenReader({ open, onClose, children }: FullscreenReaderProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     },
-    [onClose]
+    [onClose],
   );
 
   useEffect(() => {
     if (!open) return;
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     // Prevent body scroll
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
     };
   }, [open, handleKeyDown]);
 
@@ -51,9 +51,7 @@ export function FullscreenReader({ open, onClose, children }: FullscreenReaderPr
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto py-12 px-6">
-        {children}
-      </div>
+      <div className="flex-1 overflow-y-auto py-12 px-6">{children}</div>
     </motion.div>
   );
 }

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import type { Editor } from '@tiptap/react';
-import { cn } from '@/lib/utils/cn';
+import type { Editor } from "@tiptap/react";
+import { cn } from "@/lib/utils/cn";
 import {
   Bold,
   Italic,
@@ -15,7 +15,7 @@ import {
   Minus,
   Undo2,
   Redo2,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface ToolbarButtonProps {
   onClick: () => void;
@@ -32,11 +32,11 @@ function ToolbarButton({ onClick, isActive, disabled, children, title }: Toolbar
       disabled={disabled}
       title={title}
       className={cn(
-        'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+        "flex h-8 w-8 items-center justify-center rounded-md transition-colors",
         isActive
-          ? 'bg-accent-muted text-accent'
-          : 'text-text-muted hover:text-text-primary hover:bg-surface-hover',
-        disabled && 'opacity-30 pointer-events-none'
+          ? "bg-accent-muted text-accent"
+          : "text-text-muted hover:text-text-primary hover:bg-surface-hover",
+        disabled && "opacity-30 pointer-events-none",
       )}
     >
       {children}
@@ -53,21 +53,21 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
     <div className="flex items-center gap-0.5 border-b border-border px-4 py-2 bg-surface-raised/50">
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
-        isActive={editor.isActive('bold')}
+        isActive={editor.isActive("bold")}
         title="Bold"
       >
         <Bold size={15} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
-        isActive={editor.isActive('italic')}
+        isActive={editor.isActive("italic")}
         title="Italic"
       >
         <Italic size={15} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleStrike().run()}
-        isActive={editor.isActive('strike')}
+        isActive={editor.isActive("strike")}
         title="Strikethrough"
       >
         <Strikethrough size={15} />
@@ -77,21 +77,21 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        isActive={editor.isActive('heading', { level: 1 })}
+        isActive={editor.isActive("heading", { level: 1 })}
         title="Heading 1"
       >
         <Heading1 size={15} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        isActive={editor.isActive('heading', { level: 2 })}
+        isActive={editor.isActive("heading", { level: 2 })}
         title="Heading 2"
       >
         <Heading2 size={15} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        isActive={editor.isActive('heading', { level: 3 })}
+        isActive={editor.isActive("heading", { level: 3 })}
         title="Heading 3"
       >
         <Heading3 size={15} />
@@ -101,21 +101,21 @@ export function EditorToolbar({ editor }: { editor: Editor }) {
 
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        isActive={editor.isActive('blockquote')}
+        isActive={editor.isActive("blockquote")}
         title="Block Quote"
       >
         <Quote size={15} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        isActive={editor.isActive('bulletList')}
+        isActive={editor.isActive("bulletList")}
         title="Bullet List"
       >
         <List size={15} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        isActive={editor.isActive('orderedList')}
+        isActive={editor.isActive("orderedList")}
         title="Ordered List"
       >
         <ListOrdered size={15} />

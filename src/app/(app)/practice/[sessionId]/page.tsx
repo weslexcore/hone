@@ -1,21 +1,25 @@
-'use client';
+"use client";
 
-import { use, useState, useCallback, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogTitle } from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/toast';
-import { useAI } from '@/providers/ai-provider';
-import { usePracticeSession, updatePracticeSession, deletePracticeSession } from '@/lib/db/hooks';
-import { GENRES, PRACTICE_DURATIONS } from '@/lib/constants/genres';
-import { practiceGradingPrompt, formatPromptForCopy } from '@/lib/ai/prompts';
-import { stripCodeFences } from '@/lib/ai/client';
-import { useTimer } from '@/hooks/use-timer';
-import { PracticeEditor } from '@/components/editor/writing-editor';
-import type { PracticeFeedback } from '@/types/practice';
+import { use, useState, useCallback, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/toast";
+import { useAI } from "@/providers/ai-provider";
+import { usePracticeSession, updatePracticeSession, deletePracticeSession } from "@/lib/db/hooks";
+import { GENRES, PRACTICE_DURATIONS } from "@/lib/constants/genres";
+import {
+  practiceGradingPrompt,
+  practicePromptGenerationPrompt,
+  formatPromptForCopy,
+} from "@/lib/ai/prompts";
+import { stripCodeFences } from "@/lib/ai/client";
+import { useTimer } from "@/hooks/use-timer";
+import { PracticeEditor } from "@/components/editor/writing-editor";
+import type { PracticeFeedback } from "@/types/practice";
 import {
   Clock,
   Send,
@@ -35,22 +39,23 @@ import {
   EyeOff,
   Timer,
   Plus,
-  Infinity,
-} from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
-import { PasteAIResponse } from '@/components/ai/paste-ai-response';
-import Link from 'next/link';
+  Infinity as InfinityIcon,
+  RefreshCw,
+} from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { PasteAIResponse } from "@/components/ai/paste-ai-response";
+import Link from "next/link";
 
 function formatSeconds(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 const EXTEND_OPTIONS = [
-  { seconds: 300, label: '+5 min' },
-  { seconds: 600, label: '+10 min' },
-  { seconds: 900, label: '+15 min' },
+  { seconds: 300, label: "+5 min" },
+  { seconds: 600, label: "+10 min" },
+  { seconds: 900, label: "+15 min" },
 ];
 
 export default function PracticeSessionPage({
@@ -69,6 +74,8 @@ export default function PracticeSessionPage({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPrompt, setShowPrompt] = useState(true);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [showTimerDialog, setShowTimerDialog] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const hasStartedWriting = useRef(false);
   const timerAutoStarted = useRef(false);
 
@@ -77,24 +84,24 @@ export default function PracticeSessionPage({
   // Escape exits fullscreen, Cmd+Shift+F toggles fullscreen
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
+      if (e.key === "Escape" && isFullscreen) {
         setIsFullscreen(false);
       }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "f") {
         e.preventDefault();
         setIsFullscreen((prev) => !prev);
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [isFullscreen]);
 
-  const contentRef = useRef({ json: '', html: '', wordCount: 0 });
+  const contentRef = useRef({ json: "", html: "", wordCount: 0 });
 
   const handleTimerComplete = useCallback(async () => {
-    // Don't auto-submit — let the user extend or submit manually
-    toast('Time is up! You can extend or submit your writing.', 'info');
-  }, [toast]);
+    // Show dialog to let user extend or submit
+    setShowTimerDialog(true);
+  }, []);
 
   const timer = useTimer({
     durationSeconds: session?.durationSeconds ?? 600,
@@ -113,7 +120,7 @@ export default function PracticeSessionPage({
         timer.start();
       }
     },
-    [timer]
+    [timer],
   );
 
   const handleSubmit = useCallback(async () => {
@@ -122,12 +129,12 @@ export default function PracticeSessionPage({
     if (!hasStartedWriting.current || contentRef.current.wordCount === 0) {
       timer.pause();
       await deletePracticeSession(sessionId);
-      toast('No content written — session discarded.', 'info');
-      router.push('/practice');
+      toast("No content written — session discarded.", "info");
+      router.push("/practice");
       return;
     }
     await updatePracticeSession(sessionId, {
-      status: 'submitted',
+      status: "submitted",
       response: contentRef.current.json,
       responseHtml: contentRef.current.html,
       wordCount: contentRef.current.wordCount,
@@ -135,73 +142,107 @@ export default function PracticeSessionPage({
       completedAt: new Date(),
     });
     timer.pause();
-    toast('Writing submitted!', 'success');
+    toast("Writing submitted!", "success");
   }, [session, sessionId, timer, toast, router]);
 
-  const handleExtend = useCallback(async (seconds: number) => {
-    timer.extend(seconds);
-    // Update session durationSeconds to reflect the extension
-    if (session) {
-      await updatePracticeSession(sessionId, {
-        durationSeconds: session.durationSeconds + seconds,
-      });
-    }
-    toast(`Added ${Math.round(seconds / 60)} minutes`, 'success');
-  }, [timer, session, sessionId, toast]);
+  const handleExtend = useCallback(
+    async (seconds: number) => {
+      timer.extend(seconds);
+      setShowTimerDialog(false);
+      // Update session durationSeconds to reflect the extension
+      if (session) {
+        await updatePracticeSession(sessionId, {
+          durationSeconds: session.durationSeconds + seconds,
+        });
+      }
+      toast(`Added ${Math.round(seconds / 60)} minutes`, "success");
+    },
+    [timer, session, sessionId, toast],
+  );
 
   const handleRemoveLimit = useCallback(async () => {
     timer.removeLimit();
+    setShowTimerDialog(false);
     if (session) {
       await updatePracticeSession(sessionId, { durationSeconds: 0 });
     }
-    toast('Timer removed — write as long as you want', 'success');
+    toast("Timer removed — write as long as you want", "success");
   }, [timer, session, sessionId, toast]);
 
-  const handleDurationChange = useCallback(async (newDuration: number) => {
-    timer.setDuration(newDuration);
-    if (session) {
-      await updatePracticeSession(sessionId, { durationSeconds: newDuration });
+  const handleDurationChange = useCallback(
+    async (newDuration: number) => {
+      timer.setDuration(newDuration);
+      if (session) {
+        await updatePracticeSession(sessionId, { durationSeconds: newDuration });
+      }
+      setShowDurationPicker(false);
+    },
+    [timer, session, sessionId],
+  );
+
+  const handleRegeneratePrompt = useCallback(async () => {
+    if (!session || hasStartedWriting.current || timerAutoStarted.current) return;
+    setIsRegenerating(true);
+    try {
+      // Resolve genre labels for prompt generation
+      const genreLabels = session.genres.map((id) => GENRES.find((g) => g.id === id)?.label || id);
+
+      if (hasKey()) {
+        const { systemPrompt, userMessage } = practicePromptGenerationPrompt(genreLabels);
+        const newPrompt = await sendRequest(systemPrompt, userMessage);
+        await updatePracticeSession(sessionId, { prompt: newPrompt });
+        toast("Prompt regenerated!", "success");
+      } else {
+        const hasGenres = genreLabels.length > 0;
+        const genreText = hasGenres ? `${genreLabels.join("/")} ` : "";
+        const newPrompt = `Write a short ${genreText}piece. Focus on vivid sensory detail and a compelling opening line. Your piece should have a clear beginning, middle, and end.`;
+        await updatePracticeSession(sessionId, { prompt: newPrompt });
+        toast("Prompt regenerated!", "success");
+      }
+    } catch {
+      toast("Failed to regenerate prompt", "error");
+    } finally {
+      setIsRegenerating(false);
     }
-    setShowDurationPicker(false);
-  }, [timer, session, sessionId]);
+  }, [session, sessionId, hasKey, sendRequest, toast]);
 
   const handleDiscard = useCallback(async () => {
     timer.pause();
     await deletePracticeSession(sessionId);
     setShowDiscardDialog(false);
-    toast('Session discarded', 'info');
-    router.push('/practice');
+    toast("Session discarded", "info");
+    router.push("/practice");
   }, [sessionId, timer, toast, router]);
 
   const handleGrade = useCallback(async () => {
     if (!session) return;
 
-    const div = document.createElement('div');
-    div.innerHTML = session.responseHtml || '';
-    const text = div.textContent || '';
+    const div = document.createElement("div");
+    div.innerHTML = session.responseHtml || "";
+    const text = div.textContent || "";
 
     if (!text.trim()) {
-      toast('No writing to grade', 'error');
+      toast("No writing to grade", "error");
       return;
     }
 
     const { systemPrompt, userMessage } = practiceGradingPrompt(
       session.prompt,
       text,
-      session.actualSeconds
+      session.actualSeconds,
     );
 
     try {
       const result = await sendRequest(systemPrompt, userMessage);
       const feedback = JSON.parse(stripCodeFences(result)) as PracticeFeedback;
       await updatePracticeSession(sessionId, {
-        status: 'graded',
+        status: "graded",
         score: feedback.overallScore,
         feedback,
       });
-      toast('Writing graded!', 'success');
+      toast("Writing graded!", "success");
     } catch {
-      toast('Failed to grade writing', 'error');
+      toast("Failed to grade writing", "error");
     }
   }, [session, sessionId, sendRequest, toast]);
 
@@ -210,48 +251,48 @@ export default function PracticeSessionPage({
       if (!session) return;
       try {
         const feedback = data as PracticeFeedback;
-        if (typeof feedback.overallScore !== 'number' || !Array.isArray(feedback.strengths)) {
-          toast('Invalid grading format', 'error');
+        if (typeof feedback.overallScore !== "number" || !Array.isArray(feedback.strengths)) {
+          toast("Invalid grading format", "error");
           return;
         }
         await updatePracticeSession(sessionId, {
-          status: 'graded',
+          status: "graded",
           score: feedback.overallScore,
           feedback,
         });
-        toast('Grading applied!', 'success');
+        toast("Grading applied!", "success");
       } catch {
-        toast('Failed to apply grading', 'error');
+        toast("Failed to apply grading", "error");
       }
     },
-    [session, sessionId, toast]
+    [session, sessionId, toast],
   );
 
   const handleDeleteSession = useCallback(async () => {
     await deletePracticeSession(sessionId);
     setShowDeleteDialog(false);
-    toast('Session deleted', 'info');
-    router.push('/practice');
+    toast("Session deleted", "info");
+    router.push("/practice");
   }, [sessionId, toast, router]);
 
   const handleCopyForGrading = useCallback(async () => {
     if (!session) return;
 
-    const div = document.createElement('div');
-    div.innerHTML = session.responseHtml || '';
-    const text = div.textContent || '';
+    const div = document.createElement("div");
+    div.innerHTML = session.responseHtml || "";
+    const text = div.textContent || "";
 
     const { systemPrompt, userMessage } = practiceGradingPrompt(
       session.prompt,
       text,
-      session.actualSeconds
+      session.actualSeconds,
     );
 
-    const formatted = formatPromptForCopy('grading', systemPrompt, userMessage);
+    const formatted = formatPromptForCopy("grading", systemPrompt, userMessage);
     await navigator.clipboard.writeText(formatted);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast('Grading prompt copied', 'success');
+    toast("Grading prompt copied", "success");
   }, [session, toast]);
 
   if (!session) {
@@ -263,19 +304,12 @@ export default function PracticeSessionPage({
   }
 
   // Resolve genre labels — handle both built-in IDs and custom genre strings
-  const genreLabels = session.genres.map(
-    (id) => GENRES.find((g) => g.id === id)?.label || id
-  );
+  const genreLabels = session.genres.map((id) => GENRES.find((g) => g.id === id)?.label || id);
 
   // In-progress: show timer + editor
-  if (session.status === 'in_progress') {
+  if (session.status === "in_progress") {
     return (
-      <div
-        className={cn(
-          'flex flex-col h-full',
-          isFullscreen && 'fixed inset-0 z-50 bg-surface'
-        )}
-      >
+      <div className={cn("flex flex-col h-full", isFullscreen && "fixed inset-0 z-50 bg-surface")}>
         {/* Timer bar */}
         <div className="border-b border-border px-6 py-3">
           <div className="flex items-center justify-between mb-2">
@@ -283,7 +317,10 @@ export default function PracticeSessionPage({
               {/* Timer display */}
               {isUntimed ? (
                 <div className="flex items-center gap-1.5 text-lg font-mono font-semibold text-text-primary">
-                  <Timer size={18} className={timer.isRunning ? 'text-accent' : 'text-text-muted'} />
+                  <Timer
+                    size={18}
+                    className={timer.isRunning ? "text-accent" : "text-text-muted"}
+                  />
                   {formatSeconds(timer.elapsed)}
                   <span className="text-xs font-normal text-text-muted ml-1">elapsed</span>
                 </div>
@@ -296,7 +333,10 @@ export default function PracticeSessionPage({
               ) : (
                 <div className="flex items-center gap-1.5">
                   <div className="flex items-center gap-1.5 text-lg font-mono font-semibold text-text-primary">
-                    <Clock size={18} className={timer.isRunning ? 'text-accent' : 'text-text-muted'} />
+                    <Clock
+                      size={18}
+                      className={timer.isRunning ? "text-accent" : "text-text-muted"}
+                    />
                     {formatSeconds(timer.remaining)}
                   </div>
                   {/* Duration picker toggle (only before timer starts) */}
@@ -324,52 +364,35 @@ export default function PracticeSessionPage({
               <button
                 onClick={() => setShowPrompt(!showPrompt)}
                 className="p-1.5 rounded text-text-muted hover:text-text-primary transition-colors"
-                title={showPrompt ? 'Hide prompt' : 'Show prompt'}
+                title={showPrompt ? "Hide prompt" : "Show prompt"}
               >
                 {showPrompt ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="p-1.5 rounded text-text-muted hover:text-text-primary transition-colors"
-                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
               >
                 {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
               </button>
               {timer.isComplete ? (
                 <>
-                  {/* Timer expired: show extend options + submit */}
-                  {EXTEND_OPTIONS.map((opt) => (
-                    <Button
-                      key={opt.seconds}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleExtend(opt.seconds)}
-                      className="text-xs"
-                    >
-                      <Plus size={12} />
-                      {opt.label}
-                    </Button>
-                  ))}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRemoveLimit}
-                    className="text-xs"
-                  >
-                    <Infinity size={14} />
-                    {!isFullscreen && 'No limit'}
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={handleSubmit}>
-                    <Send size={14} />
-                    {!isFullscreen && 'Submit'}
+                  {/* Timer expired: button to re-open the dialog */}
+                  <Button variant="secondary" size="sm" onClick={() => setShowTimerDialog(true)}>
+                    <Clock size={14} />
+                    {!isFullscreen && "Continue or Submit"}
                   </Button>
                 </>
               ) : !timer.isRunning && !timerAutoStarted.current ? (
                 <>
-                  <Button variant="primary" size="sm" onClick={() => {
-                    timerAutoStarted.current = true;
-                    timer.start();
-                  }}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      timerAutoStarted.current = true;
+                      timer.start();
+                    }}
+                  >
                     Start Writing
                   </Button>
                   <Button
@@ -377,8 +400,8 @@ export default function PracticeSessionPage({
                     size="sm"
                     onClick={async () => {
                       await deletePracticeSession(sessionId);
-                      toast('Session discarded', 'info');
-                      router.push('/practice');
+                      toast("Session discarded", "info");
+                      router.push("/practice");
                     }}
                   >
                     <Trash2 size={14} />
@@ -389,7 +412,7 @@ export default function PracticeSessionPage({
                 <>
                   <Button variant="secondary" size="sm" onClick={handleSubmit}>
                     <Send size={14} />
-                    {!isFullscreen && (isUntimed ? 'Submit' : 'Submit Early')}
+                    {!isFullscreen && (isUntimed ? "Submit" : "Submit Early")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -398,7 +421,7 @@ export default function PracticeSessionPage({
                     className="text-text-muted hover:text-danger"
                   >
                     <X size={14} />
-                    {!isFullscreen && 'Discard'}
+                    {!isFullscreen && "Discard"}
                   </Button>
                 </>
               )}
@@ -417,9 +440,7 @@ export default function PracticeSessionPage({
           )}
 
           {/* Timer expired banner */}
-          {timer.isComplete && (
-            <div className="h-1 rounded-full bg-accent overflow-hidden" />
-          )}
+          {timer.isComplete && <div className="h-1 rounded-full bg-accent overflow-hidden" />}
 
           {/* Duration picker (shown before timer starts) */}
           {showDurationPicker && !timer.isRunning && !timerAutoStarted.current && (
@@ -429,10 +450,10 @@ export default function PracticeSessionPage({
                   key={d.value}
                   onClick={() => handleDurationChange(d.value)}
                   className={cn(
-                    'rounded border px-2.5 py-1 text-xs font-medium transition-colors',
+                    "rounded border px-2.5 py-1 text-xs font-medium transition-colors",
                     session.durationSeconds === d.value
-                      ? 'border-accent bg-accent-muted text-accent'
-                      : 'border-border text-text-secondary hover:bg-surface-hover'
+                      ? "border-accent bg-accent-muted text-accent"
+                      : "border-border text-text-secondary hover:bg-surface-hover",
                   )}
                 >
                   {d.label}
@@ -441,10 +462,10 @@ export default function PracticeSessionPage({
               <button
                 onClick={() => handleDurationChange(0)}
                 className={cn(
-                  'rounded border px-2.5 py-1 text-xs font-medium transition-colors',
+                  "rounded border px-2.5 py-1 text-xs font-medium transition-colors",
                   session.durationSeconds === 0
-                    ? 'border-accent bg-accent-muted text-accent'
-                    : 'border-border text-text-secondary hover:bg-surface-hover'
+                    ? "border-accent bg-accent-muted text-accent"
+                    : "border-border text-text-secondary hover:bg-surface-hover",
                 )}
               >
                 No limit
@@ -462,12 +483,22 @@ export default function PracticeSessionPage({
         {/* Prompt */}
         {showPrompt && (
           <div className="border-b border-border bg-surface-raised/30 px-6 py-3">
-            <p className={cn(
-              'text-sm text-text-secondary font-serif italic leading-relaxed',
-              isFullscreen && 'max-w-[65ch] mx-auto'
-            )}>
-              {session.prompt}
-            </p>
+            <div className={cn("flex items-start gap-3", isFullscreen && "max-w-[65ch] mx-auto")}>
+              <p className="text-sm text-text-secondary font-serif italic leading-relaxed flex-1">
+                {session.prompt}
+              </p>
+              {/* Regenerate button — only before writing starts */}
+              {!hasStartedWriting.current && !timerAutoStarted.current && (
+                <button
+                  onClick={handleRegeneratePrompt}
+                  disabled={isRegenerating}
+                  className="shrink-0 p-1.5 rounded text-text-muted hover:text-accent transition-colors disabled:opacity-50"
+                  title="Regenerate prompt"
+                >
+                  <RefreshCw size={14} className={isRegenerating ? "animate-spin" : ""} />
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -475,15 +506,50 @@ export default function PracticeSessionPage({
         <div className="flex-1 overflow-y-auto">
           <PracticeEditor
             placeholder="Start writing..."
+            editable={!timer.isComplete}
             onContentChange={handleContentChange}
           />
         </div>
+
+        {/* Timer Expiry Dialog */}
+        <Dialog open={showTimerDialog} onClose={() => setShowTimerDialog(false)}>
+          <DialogTitle>Time&apos;s Up!</DialogTitle>
+          <p className="text-sm text-text-secondary mb-6">
+            Your writing time has ended. Continue writing or submit your work.
+          </p>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {EXTEND_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.seconds}
+                  variant="secondary"
+                  onClick={() => handleExtend(opt.seconds)}
+                  className="flex-1"
+                >
+                  <Plus size={14} />
+                  Continue for {Math.round(opt.seconds / 60)} min
+                </Button>
+              ))}
+            </div>
+            <Button variant="ghost" onClick={handleRemoveLimit} className="w-full">
+              <InfinityIcon size={14} />
+              Remove time limit
+            </Button>
+            <div className="border-t border-border pt-3">
+              <Button variant="primary" onClick={handleSubmit} className="w-full">
+                <Send size={14} />
+                Submit Writing
+              </Button>
+            </div>
+          </div>
+        </Dialog>
 
         {/* Discard Confirmation Dialog */}
         <Dialog open={showDiscardDialog} onClose={() => setShowDiscardDialog(false)}>
           <DialogTitle>Discard Session?</DialogTitle>
           <p className="text-sm text-text-secondary mb-6">
-            This will permanently discard your writing and delete this practice session. This cannot be undone.
+            This will permanently discard your writing and delete this practice session. This cannot
+            be undone.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowDiscardDialog(false)}>
@@ -532,7 +598,11 @@ export default function PracticeSessionPage({
           </p>
           <div className="flex items-center gap-3 mt-3 text-xs text-text-muted">
             <span>{session.wordCount} words</span>
-            <span>{session.durationSeconds === 0 ? 'Untimed' : `${Math.round(session.actualSeconds / 60)} min`}</span>
+            <span>
+              {session.durationSeconds === 0
+                ? "Untimed"
+                : `${Math.round(session.actualSeconds / 60)} min`}
+            </span>
             {genreLabels.map((g) => (
               <Badge key={g} variant="muted" className="text-[10px]">
                 {g}
@@ -542,7 +612,7 @@ export default function PracticeSessionPage({
         </Card>
 
         {/* Grading */}
-        {session.status === 'submitted' && (
+        {session.status === "submitted" && (
           <div className="mb-6">
             {hasKey() ? (
               <Button
@@ -564,11 +634,7 @@ export default function PracticeSessionPage({
                 )}
               </Button>
             ) : (
-              <Button
-                variant="secondary"
-                onClick={handleCopyForGrading}
-                className="w-full"
-              >
+              <Button variant="secondary" onClick={handleCopyForGrading} className="w-full">
                 {copied ? (
                   <>
                     <Check size={16} />
@@ -585,7 +651,9 @@ export default function PracticeSessionPage({
             {!hasKey() && (
               <PasteAIResponse
                 onParsed={handlePastedGrading}
-                expectedShape={'{ overallScore, strengths[], improvements[], tips[], detailedNotes }'}
+                expectedShape={
+                  "{ overallScore, strengths[], improvements[], tips[], detailedNotes }"
+                }
                 className="mt-3"
               />
             )}
@@ -599,12 +667,12 @@ export default function PracticeSessionPage({
             <Card className="text-center py-6">
               <div
                 className={cn(
-                  'text-5xl font-bold mb-1',
+                  "text-5xl font-bold mb-1",
                   session.score !== null && session.score >= 80
-                    ? 'text-success'
+                    ? "text-success"
                     : session.score !== null && session.score >= 60
-                    ? 'text-accent'
-                    : 'text-danger'
+                      ? "text-accent"
+                      : "text-danger",
                 )}
               >
                 {session.score}
@@ -692,7 +760,8 @@ export default function PracticeSessionPage({
         <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
           <DialogTitle>Delete Practice Session</DialogTitle>
           <p className="text-sm text-text-secondary mb-6">
-            This will permanently delete this practice session and all its feedback. This cannot be undone.
+            This will permanently delete this practice session and all its feedback. This cannot be
+            undone.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>

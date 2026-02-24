@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Card } from '@/components/ui/card';
-import { useToast } from '@/components/ui/toast';
-import { useAI } from '@/providers/ai-provider';
-import { useTheme } from '@/providers/theme-provider';
+import { useState, useEffect } from "react";
+import { motion } from "motion/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
+import { useAI } from "@/providers/ai-provider";
+import { useTheme } from "@/providers/theme-provider";
 import {
   getApiKey,
   setApiKey,
@@ -22,19 +22,30 @@ import {
   removeOllamaApiKey,
   getProviderModel,
   setProviderModel,
-} from '@/lib/storage/api-keys';
-import { ANTHROPIC_MODELS, OPENAI_MODELS, type ModelOption } from '@/lib/constants/models';
-import { fetchOllamaModelsDirect } from '@/lib/ai/client';
-import { THEMES, type ThemeId } from '@/lib/storage/theme';
-import { Eye, EyeOff, Trash2, Key, Palette, Check, Server, RefreshCw, Loader2, ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+} from "@/lib/storage/api-keys";
+import { ANTHROPIC_MODELS, OPENAI_MODELS, type ModelOption } from "@/lib/constants/models";
+import { fetchOllamaModelsDirect } from "@/lib/ai/client";
+import { THEMES, type ThemeId } from "@/lib/storage/theme";
+import {
+  Eye,
+  EyeOff,
+  Trash2,
+  Key,
+  Palette,
+  Check,
+  Server,
+  RefreshCw,
+  Loader2,
+  ChevronDown,
+} from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 
 /** Small swatch showing the theme's surface + text + accent colors */
 function ThemeSwatch({ themeId }: { themeId: ThemeId }) {
   const palettes: Record<ThemeId, { bg: string; raised: string; text: string; accent: string }> = {
-    default: { bg: '#1a1a1e', raised: '#232328', text: '#e8e6e3', accent: '#c9a55a' },
-    'deep-black': { bg: '#000000', raised: '#0a0a0c', text: '#dcdad6', accent: '#c9a55a' },
-    parchment: { bg: '#f5f0e8', raised: '#ece7dd', text: '#2c2820', accent: '#9a7b3c' },
+    default: { bg: "#1a1a1e", raised: "#232328", text: "#e8e6e3", accent: "#c9a55a" },
+    "deep-black": { bg: "#000000", raised: "#0a0a0c", text: "#dcdad6", accent: "#c9a55a" },
+    parchment: { bg: "#f5f0e8", raised: "#ece7dd", text: "#2c2820", accent: "#9a7b3c" },
   };
   const p = palettes[themeId];
   return (
@@ -46,10 +57,7 @@ function ThemeSwatch({ themeId }: { themeId: ThemeId }) {
         <div className="w-3 h-[2px] rounded-full" style={{ background: p.text }} />
         <div className="w-2 h-[2px] rounded-full" style={{ background: p.text, opacity: 0.5 }} />
       </div>
-      <div
-        className="w-1/2 flex items-end justify-center pb-1"
-        style={{ background: p.raised }}
-      >
+      <div className="w-1/2 flex items-end justify-center pb-1" style={{ background: p.raised }}>
         <div className="w-2 h-2 rounded-sm" style={{ background: p.accent }} />
       </div>
     </div>
@@ -77,7 +85,7 @@ function ModelSelector({
         <span className="text-text-primary">{activeLabel}</span>
         <ChevronDown
           size={14}
-          className={cn('text-text-muted transition-transform', open && 'rotate-180')}
+          className={cn("text-text-muted transition-transform", open && "rotate-180")}
         />
       </button>
       {open && (
@@ -90,8 +98,8 @@ function ModelSelector({
                 setOpen(false);
               }}
               className={cn(
-                'w-full px-3 py-2 text-sm text-left transition-colors hover:bg-surface-hover',
-                selected === m.id ? 'text-accent bg-accent-muted' : 'text-text-primary'
+                "w-full px-3 py-2 text-sm text-left transition-colors hover:bg-surface-hover",
+                selected === m.id ? "text-accent bg-accent-muted" : "text-text-primary",
               )}
             >
               {m.label}
@@ -108,17 +116,17 @@ function ApiKeySection({
   label,
   placeholder,
 }: {
-  provider: 'anthropic' | 'openai';
+  provider: "anthropic" | "openai";
   label: string;
   placeholder: string;
 }) {
   const { toast } = useToast();
-  const [key, setKey] = useState('');
+  const [key, setKey] = useState("");
   const [saved, setSaved] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
 
-  const fallbackModels = provider === 'anthropic' ? ANTHROPIC_MODELS : OPENAI_MODELS;
+  const fallbackModels = provider === "anthropic" ? ANTHROPIC_MODELS : OPENAI_MODELS;
   const defaultModel = fallbackModels[0].id;
   const [selectedModel, setSelectedModel] = useState(defaultModel);
   const [availableModels, setAvailableModels] = useState<ModelOption[]>(fallbackModels);
@@ -138,30 +146,30 @@ function ApiKeySection({
   const fetchModels = async () => {
     const apiKey = getApiKey(provider);
     if (!apiKey) {
-      toast('Save your API key first to fetch models', 'info');
+      toast("Save your API key first to fetch models", "info");
       return;
     }
     setLoadingModels(true);
     try {
       const res = await fetch(`/api/ai/${provider}/models`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed to fetch' }));
-        toast(err.error || 'Failed to fetch models', 'error');
+        const err = await res.json().catch(() => ({ error: "Failed to fetch" }));
+        toast(err.error || "Failed to fetch models", "error");
         return;
       }
       const data = await res.json();
       if (data.models?.length > 0) {
         setAvailableModels(data.models);
-        toast(`Found ${data.models.length} models`, 'success');
+        toast(`Found ${data.models.length} models`, "success");
       } else {
-        toast('No models found', 'info');
+        toast("No models found", "info");
       }
     } catch {
-      toast('Failed to fetch models', 'error');
+      toast("Failed to fetch models", "error");
     } finally {
       setLoadingModels(false);
     }
@@ -170,22 +178,22 @@ function ApiKeySection({
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
     setProviderModel(provider, model);
-    toast(`${label} model updated`, 'success');
+    toast(`${label} model updated`, "success");
   };
 
   const handleSave = () => {
     if (!key.trim()) return;
     setApiKey(provider, key.trim());
     setSaved(true);
-    toast(`${label} key saved`, 'success');
+    toast(`${label} key saved`, "success");
   };
 
   const handleRemove = () => {
     removeApiKey(provider);
-    setKey('');
+    setKey("");
     setSaved(false);
     setAvailableModels(fallbackModels);
-    toast(`${label} key removed`, 'info');
+    toast(`${label} key removed`, "info");
   };
 
   return (
@@ -202,7 +210,7 @@ function ApiKeySection({
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Input
-            type={showKey ? 'text' : 'password'}
+            type={showKey ? "text" : "password"}
             value={key}
             onChange={(e) => {
               setKey(e.target.value);
@@ -241,7 +249,7 @@ function ApiKeySection({
               ) : (
                 <RefreshCw size={10} />
               )}
-              {loadingModels ? 'Loading…' : 'Fetch models'}
+              {loadingModels ? "Loading…" : "Fetch models"}
             </button>
           )}
         </div>
@@ -260,9 +268,9 @@ function ApiKeySection({
 
 function OllamaSection() {
   const { toast } = useToast();
-  const [url, setUrl] = useState('');
-  const [model, setModel] = useState('');
-  const [cloudKey, setCloudKey] = useState('');
+  const [url, setUrl] = useState("");
+  const [model, setModel] = useState("");
+  const [cloudKey, setCloudKey] = useState("");
   const [hasCloudKey, setHasCloudKey] = useState(false);
   const [showCloudKey, setShowCloudKey] = useState(false);
   const [useCloud, setUseCloud] = useState(false);
@@ -280,7 +288,7 @@ function OllamaSection() {
       setHasCloudKey(true);
     }
     // Auto-detect cloud mode from saved URL
-    if (savedUrl.includes('ollama.com')) {
+    if (savedUrl.includes("ollama.com")) {
       setUseCloud(true);
     }
   }, []);
@@ -288,13 +296,23 @@ function OllamaSection() {
   const fetchModels = async () => {
     setLoadingModels(true);
     try {
-      const effectiveUrl = useCloud ? 'https://ollama.com' : (url.trim() || 'http://localhost:11434');
-      const isLocal = !useCloud && (() => {
-        try {
-          const host = new URL(effectiveUrl).hostname.toLowerCase();
-          return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1' || host.endsWith('.local');
-        } catch { return false; }
-      })();
+      const effectiveUrl = useCloud ? "https://ollama.com" : url.trim() || "http://localhost:11434";
+      const isLocal =
+        !useCloud &&
+        (() => {
+          try {
+            const host = new URL(effectiveUrl).hostname.toLowerCase();
+            return (
+              host === "localhost" ||
+              host === "127.0.0.1" ||
+              host === "0.0.0.0" ||
+              host === "::1" ||
+              host.endsWith(".local")
+            );
+          } catch {
+            return false;
+          }
+        })();
 
       let models: string[] = [];
 
@@ -307,14 +325,14 @@ function OllamaSection() {
         if (useCloud && cloudKey.trim()) {
           body.ollamaApiKey = cloudKey.trim();
         }
-        const res = await fetch('/api/ai/ollama/models', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/ai/ollama/models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
         if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Failed to fetch' }));
-          toast(err.error || 'Failed to fetch models', 'error');
+          const err = await res.json().catch(() => ({ error: "Failed to fetch" }));
+          toast(err.error || "Failed to fetch models", "error");
           return;
         }
         const data = await res.json();
@@ -325,31 +343,31 @@ function OllamaSection() {
       if (models.length > 0) {
         setModelDropdownOpen(true);
       } else {
-        toast('No models found', 'info');
+        toast("No models found", "info");
       }
     } catch {
-      toast('Failed to connect to Ollama', 'error');
+      toast("Failed to connect to Ollama", "error");
     } finally {
       setLoadingModels(false);
     }
   };
 
   const handleSave = () => {
-    const effectiveUrl = useCloud ? 'https://ollama.com' : (url.trim() || 'http://localhost:11434');
+    const effectiveUrl = useCloud ? "https://ollama.com" : url.trim() || "http://localhost:11434";
     setOllamaUrl(effectiveUrl);
     if (model.trim()) setOllamaModel(model.trim());
     if (useCloud && cloudKey.trim()) {
       setOllamaApiKey(cloudKey.trim());
       setHasCloudKey(true);
     }
-    toast('Ollama settings saved', 'success');
+    toast("Ollama settings saved", "success");
   };
 
   const handleRemoveCloudKey = () => {
     removeOllamaApiKey();
-    setCloudKey('');
+    setCloudKey("");
     setHasCloudKey(false);
-    toast('Ollama cloud key removed', 'info');
+    toast("Ollama cloud key removed", "info");
   };
 
   const handleToggleCloud = (enabled: boolean) => {
@@ -357,9 +375,9 @@ function OllamaSection() {
     setAvailableModels([]);
     setModelDropdownOpen(false);
     if (enabled) {
-      setUrl('https://ollama.com');
+      setUrl("https://ollama.com");
     } else {
-      setUrl('http://localhost:11434');
+      setUrl("http://localhost:11434");
     }
   };
 
@@ -407,7 +425,7 @@ function OllamaSection() {
               ) : (
                 <RefreshCw size={10} />
               )}
-              {loadingModels ? 'Loading…' : 'Fetch models'}
+              {loadingModels ? "Loading…" : "Fetch models"}
             </button>
           </div>
           <div className="relative">
@@ -416,18 +434,18 @@ function OllamaSection() {
                 <button
                   onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
                   className={cn(
-                    'w-full flex items-center justify-between rounded-lg border px-3 py-2 text-sm text-left transition-colors',
-                    'border-border bg-surface hover:bg-surface-hover text-text-primary'
+                    "w-full flex items-center justify-between rounded-lg border px-3 py-2 text-sm text-left transition-colors",
+                    "border-border bg-surface hover:bg-surface-hover text-text-primary",
                   )}
                 >
-                  <span className={model ? 'text-text-primary' : 'text-text-muted'}>
-                    {model || 'Select a model…'}
+                  <span className={model ? "text-text-primary" : "text-text-muted"}>
+                    {model || "Select a model…"}
                   </span>
                   <ChevronDown
                     size={14}
                     className={cn(
-                      'text-text-muted transition-transform',
-                      modelDropdownOpen && 'rotate-180'
+                      "text-text-muted transition-transform",
+                      modelDropdownOpen && "rotate-180",
                     )}
                   />
                 </button>
@@ -441,8 +459,8 @@ function OllamaSection() {
                           setModelDropdownOpen(false);
                         }}
                         className={cn(
-                          'w-full px-3 py-2 text-sm text-left transition-colors hover:bg-surface-hover',
-                          model === m ? 'text-accent bg-accent-muted' : 'text-text-primary'
+                          "w-full px-3 py-2 text-sm text-left transition-colors hover:bg-surface-hover",
+                          model === m ? "text-accent bg-accent-muted" : "text-text-primary",
                         )}
                       >
                         {m}
@@ -455,7 +473,7 @@ function OllamaSection() {
               <Input
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                placeholder={useCloud ? 'gpt-oss:120b-cloud' : 'llama3.2'}
+                placeholder={useCloud ? "gpt-oss:120b-cloud" : "llama3.2"}
               />
             )}
           </div>
@@ -478,7 +496,7 @@ function OllamaSection() {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Input
-                  type={showCloudKey ? 'text' : 'password'}
+                  type={showCloudKey ? "text" : "password"}
                   value={cloudKey}
                   onChange={(e) => {
                     setCloudKey(e.target.value);
@@ -494,7 +512,12 @@ function OllamaSection() {
                 </button>
               </div>
               {hasCloudKey && (
-                <Button variant="danger" size="icon" onClick={handleRemoveCloudKey} title="Remove key">
+                <Button
+                  variant="danger"
+                  size="icon"
+                  onClick={handleRemoveCloudKey}
+                  title="Remove key"
+                >
                   <Trash2 size={14} />
                 </Button>
               )}
@@ -512,8 +535,8 @@ function OllamaSection() {
 
       <p className="text-xs text-text-muted">
         {useCloud
-          ? 'Run models in the cloud via Ollama. Requires an ollama.com account and API key.'
-          : 'Run models locally with Ollama. Calls go directly from your browser to Ollama, so it works even when this app is deployed online.'}
+          ? "Run models in the cloud via Ollama. Requires an ollama.com account and API key."
+          : "Run models locally with Ollama. Calls go directly from your browser to Ollama, so it works even when this app is deployed online."}
       </p>
       {!useCloud && (
         <details className="mt-2 text-[10px] text-text-muted/70">
@@ -523,7 +546,8 @@ function OllamaSection() {
           <div className="mt-1.5 space-y-1.5 pl-2 border-l border-border/50">
             <p>
               When Hone is hosted on the web, your browser connects to your local Ollama directly.
-              Ollama must allow requests from this domain by setting <code className="text-accent/70">OLLAMA_ORIGINS</code>.
+              Ollama must allow requests from this domain by setting{" "}
+              <code className="text-accent/70">OLLAMA_ORIGINS</code>.
             </p>
             <p className="font-medium text-text-muted">macOS (permanent via launchctl):</p>
             <pre className="bg-surface-overlay rounded px-2 py-1.5 overflow-x-auto text-[10px] leading-relaxed">
@@ -535,15 +559,21 @@ function OllamaSection() {
             <pre className="bg-surface-overlay rounded px-2 py-1.5 overflow-x-auto text-[10px] leading-relaxed">
               <code>{`sudo systemctl edit ollama.service`}</code>
             </pre>
-            <p className="text-text-muted/50">Add under <code>[Service]</code>:</p>
+            <p className="text-text-muted/50">
+              Add under <code>[Service]</code>:
+            </p>
             <pre className="bg-surface-overlay rounded px-2 py-1.5 overflow-x-auto text-[10px] leading-relaxed">
               <code>{`[Service]\nEnvironment="OLLAMA_ORIGINS=*"`}</code>
             </pre>
-            <p className="text-text-muted/50">Then run <code>sudo systemctl daemon-reload && sudo systemctl restart ollama</code></p>
+            <p className="text-text-muted/50">
+              Then run <code>sudo systemctl daemon-reload && sudo systemctl restart ollama</code>
+            </p>
 
             <p className="font-medium text-text-muted">Windows:</p>
             <p className="text-text-muted/50">
-              Open System Environment Variables, add <code className="text-accent/70">OLLAMA_ORIGINS</code> with value <code className="text-accent/70">*</code>, then restart Ollama.
+              Open System Environment Variables, add{" "}
+              <code className="text-accent/70">OLLAMA_ORIGINS</code> with value{" "}
+              <code className="text-accent/70">*</code>, then restart Ollama.
             </p>
 
             <p className="font-medium text-text-muted">Quick test (temporary):</p>
@@ -588,18 +618,18 @@ export default function SettingsPage() {
                   key={t.id}
                   onClick={() => setTheme(t.id)}
                   className={cn(
-                    'relative flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors',
+                    "relative flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors",
                     isActive
-                      ? 'border-accent bg-accent-muted'
-                      : 'border-border hover:border-border hover:bg-surface-hover'
+                      ? "border-accent bg-accent-muted"
+                      : "border-border hover:border-border hover:bg-surface-hover",
                   )}
                 >
                   <ThemeSwatch themeId={t.id} />
                   <div className="flex-1 min-w-0">
                     <p
                       className={cn(
-                        'text-sm font-medium',
-                        isActive ? 'text-accent' : 'text-text-primary'
+                        "text-sm font-medium",
+                        isActive ? "text-accent" : "text-text-primary",
                       )}
                     >
                       {t.label}
@@ -608,9 +638,7 @@ export default function SettingsPage() {
                       {t.description}
                     </p>
                   </div>
-                  {isActive && (
-                    <Check size={14} className="text-accent shrink-0" />
-                  )}
+                  {isActive && <Check size={14} className="text-accent shrink-0" />}
                 </button>
               );
             })}
@@ -632,19 +660,21 @@ export default function SettingsPage() {
             <div>
               <label className="text-xs text-text-muted block mb-2">Active Provider</label>
               <div className="flex gap-2">
-                {([
-                  { id: 'anthropic', label: 'Anthropic (Claude)' },
-                  { id: 'openai', label: 'OpenAI (GPT-4o)' },
-                  { id: 'ollama', label: 'Ollama (Local)' },
-                ] as const).map((p) => (
+                {(
+                  [
+                    { id: "anthropic", label: "Anthropic (Claude)" },
+                    { id: "openai", label: "OpenAI (GPT-4o)" },
+                    { id: "ollama", label: "Ollama (Local)" },
+                  ] as const
+                ).map((p) => (
                   <button
                     key={p.id}
                     onClick={() => setProvider(p.id)}
                     className={cn(
-                      'flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
+                      "flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
                       config.provider === p.id
-                        ? 'border-accent bg-accent-muted text-accent'
-                        : 'border-border text-text-secondary hover:border-border hover:bg-surface-hover'
+                        ? "border-accent bg-accent-muted text-accent"
+                        : "border-border text-text-secondary hover:border-border hover:bg-surface-hover",
                     )}
                   >
                     {p.label}
@@ -658,23 +688,15 @@ export default function SettingsPage() {
         {/* API Keys / Provider Config */}
         <section className="mb-8">
           <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-4">
-            {config.provider === 'ollama' ? 'Ollama Configuration' : 'API Keys'}
+            {config.provider === "ollama" ? "Ollama Configuration" : "API Keys"}
           </h2>
           <div className="space-y-4">
-            {config.provider === 'ollama' ? (
+            {config.provider === "ollama" ? (
               <OllamaSection />
             ) : (
               <>
-                <ApiKeySection
-                  provider="anthropic"
-                  label="Anthropic"
-                  placeholder="sk-ant-..."
-                />
-                <ApiKeySection
-                  provider="openai"
-                  label="OpenAI"
-                  placeholder="sk-..."
-                />
+                <ApiKeySection provider="anthropic" label="Anthropic" placeholder="sk-ant-..." />
+                <ApiKeySection provider="openai" label="OpenAI" placeholder="sk-..." />
               </>
             )}
           </div>
@@ -685,9 +707,10 @@ export default function SettingsPage() {
           <Card className="bg-accent-muted border-accent/20">
             <h3 className="text-sm font-medium text-accent mb-1">No API key? No problem.</h3>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Without an API key, you can still use all AI features via the &ldquo;Copy for AI&rdquo; button.
-              It copies a formatted prompt to your clipboard that you can paste into Claude.ai,
-              ChatGPT, or any other AI assistant. You can also run models locally with Ollama.
+              Without an API key, you can still use all AI features via the &ldquo;Copy for
+              AI&rdquo; button. It copies a formatted prompt to your clipboard that you can paste
+              into Claude.ai, ChatGPT, or any other AI assistant. You can also run models locally
+              with Ollama.
             </p>
           </Card>
         </section>

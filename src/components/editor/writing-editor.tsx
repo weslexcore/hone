@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEditor, EditorContent } from '@tiptap/react';
-import { useEffect } from 'react';
-import { createEditorExtensions } from '@/lib/editor/extensions';
-import { EditorToolbar } from './editor-toolbar';
-import { WordCountBar } from './word-count-bar';
-import { useAutosave } from '@/hooks/use-autosave';
+import { useEditor, EditorContent } from "@tiptap/react";
+import { useEffect } from "react";
+import { createEditorExtensions } from "@/lib/editor/extensions";
+import { EditorToolbar } from "./editor-toolbar";
+import { WordCountBar } from "./word-count-bar";
+import { useAutosave } from "@/hooks/use-autosave";
 
 interface WritingEditorProps {
   sceneId: string;
@@ -20,7 +20,7 @@ interface WritingEditorProps {
 export function WritingEditor({
   sceneId,
   initialContent,
-  placeholder = 'Begin writing...',
+  placeholder = "Begin writing...",
   showToolbar = true,
   showWordCount = true,
   onWordCountChange,
@@ -32,7 +32,7 @@ export function WritingEditor({
     content: initialContent ? JSON.parse(initialContent) : undefined,
     editorProps: {
       attributes: {
-        class: 'ProseMirror',
+        class: "ProseMirror",
       },
     },
     onUpdate: ({ editor }) => {
@@ -59,29 +59,30 @@ export function WritingEditor({
     <div className={className}>
       {showToolbar && <EditorToolbar editor={editor} />}
       <EditorContent editor={editor} />
-      {showWordCount && (
-        <WordCountBar editor={editor} lastSaved={lastSaved} isSaving={isSaving} />
-      )}
+      {showWordCount && <WordCountBar editor={editor} lastSaved={lastSaved} isSaving={isSaving} />}
     </div>
   );
 }
 
 // Simplified editor for practice mode (no auto-save to scene)
 export function PracticeEditor({
-  placeholder = 'Start writing...',
+  placeholder = "Start writing...",
+  editable = true,
   onContentChange,
   className,
 }: {
   placeholder?: string;
+  editable?: boolean;
   onContentChange?: (json: string, html: string, wordCount: number) => void;
   className?: string;
 }) {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: createEditorExtensions(placeholder),
+    editable,
     editorProps: {
       attributes: {
-        class: 'ProseMirror',
+        class: "ProseMirror",
       },
     },
     onUpdate: ({ editor }) => {
@@ -91,6 +92,13 @@ export function PracticeEditor({
       onContentChange?.(json, html, words);
     },
   });
+
+  // Toggle editability when prop changes
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(editable);
+    }
+  }, [editor, editable]);
 
   if (!editor) return null;
 

@@ -1,18 +1,7 @@
-'use client';
+"use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  type ReactNode,
-} from 'react';
-import {
-  getTheme,
-  setTheme as persistTheme,
-  type ThemeId,
-} from '@/lib/storage/theme';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { getTheme, setTheme as persistTheme, type ThemeId } from "@/lib/storage/theme";
 
 interface ThemeContextValue {
   theme: ThemeId;
@@ -20,12 +9,12 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: 'default',
+  theme: "default",
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>('default');
+  const [theme, setThemeState] = useState<ThemeId>("default");
 
   // Read persisted theme on mount
   useEffect(() => {
@@ -34,7 +23,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Apply data-theme attribute to <html> whenever it changes
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
   const setTheme = useCallback((t: ThemeId) => {
@@ -42,11 +31,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     persistTheme(t);
   }, []);
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

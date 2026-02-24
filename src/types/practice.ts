@@ -17,7 +17,7 @@ export interface PracticeSession {
   actualSeconds: number;
   score: number | null;
   feedback: PracticeFeedback | null;
-  status: 'in_progress' | 'submitted' | 'graded';
+  status: "in_progress" | "submitted" | "graded";
   createdAt: Date;
   completedAt: Date | null;
 }

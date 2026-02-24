@@ -6,7 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "oxlint --fix",
+    "format": "oxfmt --write src/",
+    "format:check": "oxfmt --check src/",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs}": [
+      "oxfmt --write",
+      "oxlint --fix"
+    ]
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -38,6 +47,11 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "eslint-plugin-oxlint": "^1.50.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.50.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import type { Editor } from '@tiptap/react';
-import { cn } from '@/lib/utils/cn';
+import type { Editor } from "@tiptap/react";
+import { cn } from "@/lib/utils/cn";
 
 interface WordCountBarProps {
   editor: Editor;
@@ -10,12 +10,12 @@ interface WordCountBarProps {
 }
 
 function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function readingTime(words: number) {
   const minutes = Math.ceil(words / 238);
-  if (minutes < 1) return '< 1 min read';
+  if (minutes < 1) return "< 1 min read";
   return `${minutes} min read`;
 }
 
@@ -37,7 +37,7 @@ export function WordCountBar({ editor, lastSaved, isSaving }: WordCountBarProps)
           ) : lastSaved ? (
             <span>Saved {formatTime(lastSaved)}</span>
           ) : (
-            <span className={cn('text-text-muted')}>Not saved</span>
+            <span className={cn("text-text-muted")}>Not saved</span>
           )}
         </div>
       )}

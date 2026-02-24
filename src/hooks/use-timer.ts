@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from "react";
 
 interface UseTimerOptions {
   durationSeconds: number;
@@ -92,17 +92,20 @@ export function useTimer({ durationSeconds, onComplete }: UseTimerOptions) {
   }, [durationSeconds]);
 
   /** Add more time — typically called when timer expires */
-  const extend = useCallback((seconds: number) => {
-    setRemaining(seconds);
-    pausedAtRef.current = seconds;
-    segmentDurationRef.current = seconds;
-    setIsComplete(false);
-    isUntimedRef.current = false;
-    // Preserve elapsed so far
-    elapsedAccumRef.current = totalElapsed;
-    startTimeRef.current = Date.now();
-    setIsRunning(true);
-  }, [totalElapsed]);
+  const extend = useCallback(
+    (seconds: number) => {
+      setRemaining(seconds);
+      pausedAtRef.current = seconds;
+      segmentDurationRef.current = seconds;
+      setIsComplete(false);
+      isUntimedRef.current = false;
+      // Preserve elapsed so far
+      elapsedAccumRef.current = totalElapsed;
+      startTimeRef.current = Date.now();
+      setIsRunning(true);
+    },
+    [totalElapsed],
+  );
 
   /** Change duration before timer has started */
   const setDuration = useCallback((newDuration: number) => {

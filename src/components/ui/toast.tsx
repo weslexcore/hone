@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '@/lib/utils/cn';
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { cn } from "@/lib/utils/cn";
+import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
 
 interface Toast {
   id: string;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: "success" | "error" | "info";
 }
 
 interface ToastContextValue {
-  toast: (message: string, type?: Toast['type']) => void;
+  toast: (message: string, type?: Toast["type"]) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -20,7 +20,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = useCallback((message: string, type: Toast['type'] = 'info') => {
+  const addToast = useCallback((message: string, type: Toast["type"] = "info") => {
     const id = Math.random().toString(36).slice(2);
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
@@ -50,8 +50,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.95 }}
               className={cn(
-                'flex items-center gap-3 rounded-lg border border-border bg-surface-raised px-4 py-3 shadow-xl',
-                'min-w-[280px] max-w-[400px]'
+                "flex items-center gap-3 rounded-lg border border-border bg-surface-raised px-4 py-3 shadow-xl",
+                "min-w-[280px] max-w-[400px]",
               )}
             >
               {icons[t.type]}
@@ -72,6 +72,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within ToastProvider');
+  if (!ctx) throw new Error("useToast must be used within ToastProvider");
   return ctx;
 }

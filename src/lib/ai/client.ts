@@ -1,4 +1,4 @@
-import type { AIProvider, AIRequest } from '@/types/ai';
+import type { AIProvider, AIRequest } from "@/types/ai";
 
 /**
  * Strip markdown code fences that AI models often wrap around JSON responses.
@@ -7,9 +7,9 @@ import type { AIProvider, AIRequest } from '@/types/ai';
 export function stripCodeFences(text: string): string {
   let cleaned = text.trim();
   // Remove ```json or ``` opening fence
-  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '');
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "");
   // Remove closing ``` fence
-  cleaned = cleaned.replace(/\n?\s*```$/, '');
+  cleaned = cleaned.replace(/\n?\s*```$/, "");
   return cleaned.trim();
 }
 
@@ -23,11 +23,11 @@ function isLocalUrl(url: string): boolean {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase();
     return (
-      host === 'localhost' ||
-      host === '127.0.0.1' ||
-      host === '0.0.0.0' ||
-      host === '::1' ||
-      host.endsWith('.local')
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "0.0.0.0" ||
+      host === "::1" ||
+      host.endsWith(".local")
     );
   } catch {
     return false;
@@ -44,35 +44,35 @@ async function sendOllamaDirectRequest(
   userMessage: string,
   ollamaApiKey?: string,
 ): Promise<string> {
-  const ollamaUrl = baseUrl.replace(/\/+$/, '');
+  const ollamaUrl = baseUrl.replace(/\/+$/, "");
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
   if (ollamaApiKey) {
-    headers['Authorization'] = `Bearer ${ollamaApiKey}`;
+    headers["Authorization"] = `Bearer ${ollamaApiKey}`;
   }
 
   const response = await fetch(`${ollamaUrl}/api/chat`, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify({
-      model: model || 'llama3.2',
+      model: model || "llama3.2",
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
       ],
       stream: false,
     }),
   });
 
   if (!response.ok) {
-    const text = await response.text().catch(() => 'Unknown error');
+    const text = await response.text().catch(() => "Unknown error");
     throw new Error(`Ollama error (${response.status}): ${text}`);
   }
 
   const data = await response.json();
-  return data.message?.content ?? '';
+  return data.message?.content ?? "";
 }
 
 /**
@@ -82,20 +82,20 @@ export async function fetchOllamaModelsDirect(
   baseUrl: string,
   ollamaApiKey?: string,
 ): Promise<string[]> {
-  const ollamaUrl = baseUrl.replace(/\/+$/, '');
+  const ollamaUrl = baseUrl.replace(/\/+$/, "");
 
   const headers: Record<string, string> = {};
   if (ollamaApiKey) {
-    headers['Authorization'] = `Bearer ${ollamaApiKey}`;
+    headers["Authorization"] = `Bearer ${ollamaApiKey}`;
   }
 
   const response = await fetch(`${ollamaUrl}/api/tags`, {
-    method: 'GET',
+    method: "GET",
     headers,
   });
 
   if (!response.ok) {
-    const text = await response.text().catch(() => 'Unknown error');
+    const text = await response.text().catch(() => "Unknown error");
     throw new Error(`Ollama error (${response.status}): ${text}`);
   }
 
@@ -113,12 +113,12 @@ export async function sendAIRequest(
 ): Promise<string> {
   // For Ollama with a local URL, call directly from the browser
   // (server-side proxy can't reach localhost when deployed)
-  if (provider === 'ollama') {
-    const baseUrl = apiKey || 'http://localhost:11434';
+  if (provider === "ollama") {
+    const baseUrl = apiKey || "http://localhost:11434";
     if (isLocalUrl(baseUrl)) {
       return sendOllamaDirectRequest(
         baseUrl,
-        options?.model || 'llama3.2',
+        options?.model || "llama3.2",
         request.systemPrompt,
         request.userMessage,
         options?.ollamaApiKey,
@@ -127,9 +127,9 @@ export async function sendAIRequest(
   }
 
   const endpoints: Record<AIProvider, string> = {
-    anthropic: '/api/ai/anthropic',
-    openai: '/api/ai/openai',
-    ollama: '/api/ai/ollama',
+    anthropic: "/api/ai/anthropic",
+    openai: "/api/ai/openai",
+    ollama: "/api/ai/ollama",
   };
 
   const endpoint = endpoints[provider];
@@ -142,19 +142,19 @@ export async function sendAIRequest(
   };
 
   // For Ollama, apiKey is the base URL. Also pass optional cloud API key.
-  if (provider === 'ollama') {
+  if (provider === "ollama") {
     body.baseUrl = apiKey;
     body.ollamaApiKey = options?.ollamaApiKey;
   }
 
   const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    const error = await response.json().catch(() => ({ error: "Request failed" }));
     throw new Error(error.error || `AI request failed: ${response.status}`);
   }
 

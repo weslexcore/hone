@@ -1,15 +1,20 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import { motion } from 'motion/react';
-import { useScenes, useChapters } from '@/lib/db/hooks';
-import { db } from '@/lib/db/index';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { cn } from '@/lib/utils/cn';
+import { useMemo } from "react";
+import { motion } from "motion/react";
+import { useScenes, useChapters } from "@/lib/db/hooks";
+import { db } from "@/lib/db/index";
+import { useLiveQuery } from "dexie-react-hooks";
 
 // --- Read Chapter: all scenes in a chapter combined ---
 
-export function ReadChapterView({ chapterId, chapterTitle }: { chapterId: string; chapterTitle: string }) {
+export function ReadChapterView({
+  chapterId,
+  chapterTitle,
+}: {
+  chapterId: string;
+  chapterTitle: string;
+}) {
   const scenes = useScenes(chapterId);
 
   if (!scenes || scenes.length === 0) {
@@ -23,15 +28,12 @@ export function ReadChapterView({ chapterId, chapterTitle }: { chapterId: string
   const totalWords = scenes.reduce((sum, s) => sum + s.wordCount, 0);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <div className="mb-8 text-center">
         <h2 className="text-2xl font-semibold text-text-primary font-serif">{chapterTitle}</h2>
         <p className="text-xs text-text-muted mt-2">
-          {scenes.length} scene{scenes.length !== 1 ? 's' : ''} &middot; {totalWords.toLocaleString()} words
+          {scenes.length} scene{scenes.length !== 1 ? "s" : ""} &middot;{" "}
+          {totalWords.toLocaleString()} words
         </p>
       </div>
 
@@ -72,13 +74,19 @@ export function ReadChapterView({ chapterId, chapterTitle }: { chapterId: string
 
 // --- Read Project: all chapters and scenes combined ---
 
-export function ReadProjectView({ projectId, projectTitle }: { projectId: string; projectTitle: string }) {
+export function ReadProjectView({
+  projectId,
+  projectTitle,
+}: {
+  projectId: string;
+  projectTitle: string;
+}) {
   const chapters = useChapters(projectId);
 
   // Fetch all scenes for this project, grouped by chapter
   const allScenes = useLiveQuery(
-    () => db.scenes.where('projectId').equals(projectId).sortBy('sortOrder'),
-    [projectId]
+    () => db.scenes.where("projectId").equals(projectId).sortBy("sortOrder"),
+    [projectId],
   );
 
   const scenesByChapter = useMemo(() => {
@@ -103,18 +111,13 @@ export function ReadProjectView({ projectId, projectTitle }: { projectId: string
   const totalScenes = allScenes?.length ?? 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       {/* Project title page */}
       <div className="mb-16 text-center py-12">
         <h1 className="text-4xl font-bold text-text-primary font-serif mb-3">{projectTitle}</h1>
         <p className="text-xs text-text-muted">
-          {chapters.length} chapter{chapters.length !== 1 ? 's' : ''} &middot;{' '}
-          {totalScenes} scene{totalScenes !== 1 ? 's' : ''} &middot;{' '}
-          {totalWords.toLocaleString()} words
+          {chapters.length} chapter{chapters.length !== 1 ? "s" : ""} &middot; {totalScenes} scene
+          {totalScenes !== 1 ? "s" : ""} &middot; {totalWords.toLocaleString()} words
         </p>
       </div>
 

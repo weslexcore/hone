@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { use } from 'react';
-import Link from 'next/link';
-import { useProject } from '@/lib/db/hooks';
-import { ProjectTree } from '@/components/layout/project-tree';
+import { use } from "react";
+import Link from "next/link";
+import { useProject } from "@/lib/db/hooks";
+import { ProjectTree } from "@/components/layout/project-tree";
 
 export default function ProjectLayout({
   children,
@@ -24,7 +24,7 @@ export default function ProjectLayout({
             href={`/project/${projectId}`}
             className="text-xs font-medium text-text-muted uppercase tracking-wider hover:text-accent transition-colors"
           >
-            {project?.title || 'Project'}
+            {project?.title || "Project"}
           </Link>
         </div>
         <ProjectTree projectId={projectId} />

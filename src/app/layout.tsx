@@ -1,22 +1,22 @@
-import type { Metadata } from 'next';
-import { Literata, Instrument_Sans } from 'next/font/google';
-import './globals.css';
+import type { Metadata } from "next";
+import { Literata, Instrument_Sans } from "next/font/google";
+import "./globals.css";
 
 const literata = Literata({
-  subsets: ['latin'],
-  variable: '--font-literata',
-  display: 'swap',
+  subsets: ["latin"],
+  variable: "--font-literata",
+  display: "swap",
 });
 
 const instrumentSans = Instrument_Sans({
-  subsets: ['latin'],
-  variable: '--font-instrument-sans',
-  display: 'swap',
+  subsets: ["latin"],
+  variable: "--font-instrument-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: 'Hone',
-  description: 'A minimalist writing platform',
+  title: "Hone",
+  description: "A minimalist writing platform",
 };
 
 export default function RootLayout({

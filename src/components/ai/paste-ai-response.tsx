@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { ClipboardPaste, Check, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils/cn';
+import { useState } from "react";
+import { ClipboardPaste, Check, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 
 interface PasteAIResponseProps {
   onParsed: (data: unknown) => void;
@@ -16,12 +16,12 @@ interface PasteAIResponseProps {
 
 export function PasteAIResponse({
   onParsed,
-  placeholder = 'Paste the JSON response from your AI here...',
+  placeholder = "Paste the JSON response from your AI here...",
   expectedShape,
   allowPlainText = false,
   className,
 }: PasteAIResponseProps) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -32,7 +32,7 @@ export function PasteAIResponse({
 
     const trimmed = value.trim();
     if (!trimmed) {
-      setError('Paste a response first');
+      setError("Paste a response first");
       return;
     }
 
@@ -52,13 +52,13 @@ export function PasteAIResponse({
       if (allowPlainText) {
         onParsed(trimmed);
       } else {
-        setError('Could not parse as JSON. Make sure you copied the full response.');
+        setError("Could not parse as JSON. Make sure you copied the full response.");
         return;
       }
     }
 
     setSuccess(true);
-    setValue('');
+    setValue("");
     setTimeout(() => {
       setSuccess(false);
       setExpanded(false);
@@ -70,8 +70,8 @@ export function PasteAIResponse({
       <button
         onClick={() => setExpanded(true)}
         className={cn(
-          'flex items-center gap-2 w-full rounded-lg border border-dashed border-border px-3 py-2 text-xs text-text-muted hover:text-text-secondary hover:border-text-muted transition-colors',
-          className
+          "flex items-center gap-2 w-full rounded-lg border border-dashed border-border px-3 py-2 text-xs text-text-muted hover:text-text-secondary hover:border-text-muted transition-colors",
+          className,
         )}
       >
         <ClipboardPaste size={13} />
@@ -81,7 +81,7 @@ export function PasteAIResponse({
   }
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn("space-y-2", className)}>
       <textarea
         value={value}
         onChange={(e) => {
@@ -125,7 +125,15 @@ export function PasteAIResponse({
             </>
           )}
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => { setExpanded(false); setValue(''); setError(null); }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setExpanded(false);
+            setValue("");
+            setError(null);
+          }}
+        >
           Cancel
         </Button>
       </div>

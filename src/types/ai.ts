@@ -1,4 +1,4 @@
-export type AIProvider = 'anthropic' | 'openai' | 'ollama';
+export type AIProvider = "anthropic" | "openai" | "ollama";
 
 export interface AIConfig {
   provider: AIProvider;
@@ -7,7 +7,7 @@ export interface AIConfig {
 }
 
 export interface AIRequest {
-  type: 'suggestion' | 'consistency' | 'prompt_generation' | 'grading';
+  type: "suggestion" | "consistency" | "prompt_generation" | "grading";
   systemPrompt: string;
   userMessage: string;
   context?: string;
@@ -15,7 +15,7 @@ export interface AIRequest {
 
 export interface AISuggestion {
   id: string;
-  type: 'style' | 'grammar' | 'pacing' | 'dialogue' | 'consistency' | 'general';
+  type: "style" | "grammar" | "pacing" | "dialogue" | "consistency" | "general";
   title: string;
   description: string;
   originalText?: string;
@@ -29,10 +29,10 @@ export interface SavedSuggestionBatch {
   /** Scene or chapter ID this batch belongs to */
   targetId: string;
   /** 'scene' or 'chapter' */
-  targetType: 'scene' | 'chapter';
+  targetType: "scene" | "chapter";
   projectId: string;
   /** 'suggestions' or 'consistency' */
-  analysisType: 'suggestions' | 'consistency';
+  analysisType: "suggestions" | "consistency";
   suggestions: AISuggestion[];
   /** IDs of dismissed suggestions within this batch */
   dismissedIds: string[];

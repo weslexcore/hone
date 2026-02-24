@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
+import { use, useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import {
   useChapter,
   useScenes,
@@ -10,16 +10,16 @@ import {
   createScene,
   deleteScene,
   updateScene,
-} from '@/lib/db/hooks';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogTitle } from '@/components/ui/dialog';
-import { Card } from '@/components/ui/card';
-import { useToast } from '@/components/ui/toast';
-import { ChapterWriter } from '@/components/project/chapter-writer';
-import { ReadChapterView } from '@/components/project/read-view';
-import { FullscreenReader } from '@/components/project/fullscreen-reader';
+} from "@/lib/db/hooks";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
+import { ChapterWriter } from "@/components/project/chapter-writer";
+import { ReadChapterView } from "@/components/project/read-view";
+import { FullscreenReader } from "@/components/project/fullscreen-reader";
 import {
   Plus,
   Trash2,
@@ -30,11 +30,11 @@ import {
   PenLine,
   BookOpen,
   Maximize2,
-} from 'lucide-react';
-import { ExpandableSection } from '@/components/ui/expandable-section';
-import { cn } from '@/lib/utils/cn';
+} from "lucide-react";
+import { ExpandableSection } from "@/components/ui/expandable-section";
+import { cn } from "@/lib/utils/cn";
 
-type ChapterTab = 'manage' | 'write' | 'read';
+type ChapterTab = "manage" | "write" | "read";
 
 export default function ChapterPage({
   params,
@@ -47,11 +47,11 @@ export default function ChapterPage({
   const scenes = useScenes(chapterId);
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<ChapterTab>('manage');
+  const [activeTab, setActiveTab] = useState<ChapterTab>("manage");
   const [editingTitle, setEditingTitle] = useState(false);
-  const [titleInput, setTitleInput] = useState('');
+  const [titleInput, setTitleInput] = useState("");
   const [showCreateScene, setShowCreateScene] = useState(false);
-  const [newSceneTitle, setNewSceneTitle] = useState('');
+  const [newSceneTitle, setNewSceneTitle] = useState("");
   const [deletingSceneId, setDeletingSceneId] = useState<string | null>(null);
   const [fullscreenRead, setFullscreenRead] = useState(false);
   const [fullscreenWrite, setFullscreenWrite] = useState(false);
@@ -61,7 +61,7 @@ export default function ChapterPage({
   const handleTitleSave = async () => {
     if (titleInput.trim()) {
       await updateChapter(chapterId, { title: titleInput.trim() });
-      toast('Title updated', 'success');
+      toast("Title updated", "success");
     }
     setEditingTitle(false);
   };
@@ -70,20 +70,20 @@ export default function ChapterPage({
     if (!newSceneTitle.trim()) return;
     const id = await createScene(chapterId, projectId, { title: newSceneTitle.trim() });
     setShowCreateScene(false);
-    setNewSceneTitle('');
-    toast('Scene created', 'success');
+    setNewSceneTitle("");
+    toast("Scene created", "success");
     router.push(`/project/${projectId}/${chapterId}/${id}`);
   };
 
   const handleDeleteScene = async (id: string) => {
     await deleteScene(id);
     setDeletingSceneId(null);
-    toast('Scene deleted', 'info');
+    toast("Scene deleted", "info");
   };
 
-  const handleReorder = async (index: number, direction: 'up' | 'down') => {
+  const handleReorder = async (index: number, direction: "up" | "down") => {
     if (!scenes) return;
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= scenes.length) return;
 
     await updateScene(scenes[index].id, { sortOrder: targetIndex });
@@ -91,9 +91,9 @@ export default function ChapterPage({
   };
 
   const tabs: { id: ChapterTab; label: string; icon: typeof List }[] = [
-    { id: 'manage', label: 'Scenes', icon: List },
-    { id: 'write', label: 'Write', icon: PenLine },
-    { id: 'read', label: 'Read', icon: BookOpen },
+    { id: "manage", label: "Scenes", icon: List },
+    { id: "write", label: "Write", icon: PenLine },
+    { id: "read", label: "Read", icon: BookOpen },
   ];
 
   return (
@@ -110,7 +110,7 @@ export default function ChapterPage({
               value={titleInput}
               onChange={(e) => setTitleInput(e.target.value)}
               onBlur={handleTitleSave}
-              onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+              onKeyDown={(e) => e.key === "Enter" && handleTitleSave()}
               autoFocus
               className="text-2xl font-semibold"
             />
@@ -141,10 +141,10 @@ export default function ChapterPage({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+                  "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
                   activeTab === tab.id
-                    ? 'text-accent border-accent'
-                    : 'text-text-muted hover:text-text-secondary border-transparent'
+                    ? "text-accent border-accent"
+                    : "text-text-muted hover:text-text-secondary border-transparent",
                 )}
               >
                 <Icon size={15} />
@@ -155,7 +155,7 @@ export default function ChapterPage({
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'manage' && (
+        {activeTab === "manage" && (
           <>
             {/* Chapter Notes */}
             <ExpandableSection
@@ -204,7 +204,7 @@ export default function ChapterPage({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleReorder(index, 'up');
+                          handleReorder(index, "up");
                         }}
                         disabled={index === 0}
                         className="p-1 text-text-muted hover:text-text-primary disabled:opacity-30"
@@ -214,7 +214,7 @@ export default function ChapterPage({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleReorder(index, 'down');
+                          handleReorder(index, "down");
                         }}
                         disabled={index === scenes.length - 1}
                         className="p-1 text-text-muted hover:text-text-primary disabled:opacity-30"
@@ -239,21 +239,22 @@ export default function ChapterPage({
                 <FileText size={32} className="mx-auto text-text-muted mb-3" />
                 <p className="text-sm text-text-muted mb-1">No scenes yet</p>
                 <p className="text-xs text-text-muted">
-                  Add scenes individually, or switch to the <strong>Write</strong> tab to write the full chapter and extract scenes automatically.
+                  Add scenes individually, or switch to the <strong>Write</strong> tab to write the
+                  full chapter and extract scenes automatically.
                 </p>
               </div>
             )}
           </>
         )}
 
-        {activeTab === 'write' && (
+        {activeTab === "write" && (
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 rounded-lg bg-accent-muted/50 border border-accent/10 px-4 py-3">
                 <p className="text-xs text-text-secondary leading-relaxed">
-                  Write your chapter as continuous prose below. Type{' '}
-                  <code className="px-1 py-0.5 rounded bg-surface-overlay text-[11px]">---</code>{' '}
-                  to mark scene boundaries, then click{' '}
+                  Write your chapter as continuous prose below. Type{" "}
+                  <code className="px-1 py-0.5 rounded bg-surface-overlay text-[11px]">---</code> to
+                  mark scene boundaries, then click{" "}
                   <strong className="text-text-primary">Extract Scenes</strong> to split them out.
                   You can also use <strong className="text-text-primary">AI Split</strong> to
                   automatically identify scene breaks.
@@ -273,7 +274,7 @@ export default function ChapterPage({
               <ChapterWriter
                 chapterId={chapterId}
                 projectId={projectId}
-                onScenesCreated={() => setActiveTab('manage')}
+                onScenesCreated={() => setActiveTab("manage")}
               />
             )}
             <FullscreenReader open={fullscreenWrite} onClose={() => setFullscreenWrite(false)}>
@@ -283,7 +284,7 @@ export default function ChapterPage({
                   projectId={projectId}
                   onScenesCreated={() => {
                     setFullscreenWrite(false);
-                    setActiveTab('manage');
+                    setActiveTab("manage");
                   }}
                 />
               </div>
@@ -291,14 +292,10 @@ export default function ChapterPage({
           </div>
         )}
 
-        {activeTab === 'read' && (
+        {activeTab === "read" && (
           <div className="py-4">
             <div className="flex justify-end mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFullscreenRead(true)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setFullscreenRead(true)}>
                 <Maximize2 size={14} />
                 Fullscreen
               </Button>
@@ -319,7 +316,7 @@ export default function ChapterPage({
               onChange={(e) => setNewSceneTitle(e.target.value)}
               placeholder="Scene title"
               autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateScene()}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateScene()}
             />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowCreateScene(false)}>

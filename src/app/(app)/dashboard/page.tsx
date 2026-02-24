@@ -1,41 +1,41 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
-import { useProjects, createProject, deleteProject } from '@/lib/db/hooks';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/toast';
-import { Plus, Trash2, BookOpen, Clock } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { useProjects, createProject, deleteProject } from "@/lib/db/hooks";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
+import { Plus, Trash2, BookOpen, Clock } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 export default function DashboardPage() {
   const router = useRouter();
   const projects = useProjects();
   const { toast } = useToast();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     const id = await createProject({ title: newTitle.trim(), description: newDescription.trim() });
     setShowCreateDialog(false);
-    setNewTitle('');
-    setNewDescription('');
-    toast('Project created', 'success');
+    setNewTitle("");
+    setNewDescription("");
+    toast("Project created", "success");
     router.push(`/project/${id}`);
   };
 
   const handleDelete = async (id: string) => {
     await deleteProject(id);
     setDeletingId(null);
-    toast('Project deleted', 'info');
+    toast("Project deleted", "info");
   };
 
   return (
@@ -91,9 +91,7 @@ export default function DashboardPage() {
                   onClick={() => router.push(`/project/${project.id}`)}
                   className="group relative"
                 >
-                  <h3 className="font-semibold text-text-primary mb-1 pr-8">
-                    {project.title}
-                  </h3>
+                  <h3 className="font-semibold text-text-primary mb-1 pr-8">{project.title}</h3>
                   {project.description && (
                     <p className="text-sm text-text-muted line-clamp-2 mb-3">
                       {project.description}
@@ -132,7 +130,7 @@ export default function DashboardPage() {
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="My Novel"
                 autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               />
             </div>
             <div>

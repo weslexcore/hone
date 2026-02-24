@@ -1,23 +1,16 @@
-'use client';
+"use client";
 
-import { use, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { useScene, useProject, updateScene } from '@/lib/db/hooks';
-import { WritingEditor } from '@/components/editor/writing-editor';
-import { AIPanel } from '@/components/ai/ai-panel';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useDistractionFree } from '@/hooks/use-distraction-free';
-import { useToast } from '@/components/ui/toast';
-import {
-  Sparkles,
-  Maximize2,
-  Minimize2,
-  StickyNote,
-  X,
-} from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import { use, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { useScene, useProject, updateScene } from "@/lib/db/hooks";
+import { WritingEditor } from "@/components/editor/writing-editor";
+import { AIPanel } from "@/components/ai/ai-panel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useDistractionFree } from "@/hooks/use-distraction-free";
+import { Sparkles, Maximize2, Minimize2, StickyNote, X } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 
 export default function SceneEditorPage({
   params,
@@ -27,12 +20,11 @@ export default function SceneEditorPage({
   const { projectId, sceneId } = use(params);
   const scene = useScene(sceneId);
   const project = useProject(projectId);
-  const { toast } = useToast();
   const { isActive: isDistractionFree, toggle: toggleDistractionFree } = useDistractionFree();
   const [showAI, setShowAI] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [titleInput, setTitleInput] = useState('');
+  const [titleInput, setTitleInput] = useState("");
 
   if (!scene) {
     return (
@@ -52,12 +44,7 @@ export default function SceneEditorPage({
   };
 
   return (
-    <div
-      className={cn(
-        'flex h-full',
-        isDistractionFree && 'fixed inset-0 z-50 bg-surface'
-      )}
-    >
+    <div className={cn("flex h-full", isDistractionFree && "fixed inset-0 z-50 bg-surface")}>
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Scene header */}
@@ -69,7 +56,7 @@ export default function SceneEditorPage({
                   value={titleInput}
                   onChange={(e) => setTitleInput(e.target.value)}
                   onBlur={handleTitleSave}
-                  onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                  onKeyDown={(e) => e.key === "Enter" && handleTitleSave()}
                   autoFocus
                   className="text-lg font-semibold max-w-md"
                 />
@@ -101,7 +88,7 @@ export default function SceneEditorPage({
                   onClick={() => setShowAI(!showAI)}
                   title="AI Analysis"
                 >
-                  <Sparkles size={16} className={showAI ? 'text-accent' : ''} />
+                  <Sparkles size={16} className={showAI ? "text-accent" : ""} />
                 </Button>
               )}
               <Button
@@ -126,10 +113,7 @@ export default function SceneEditorPage({
               <Minimize2 size={20} />
             </button>
           )}
-          <WritingEditor
-            sceneId={sceneId}
-            initialContent={scene.content || undefined}
-          />
+          <WritingEditor sceneId={sceneId} initialContent={scene.content || undefined} />
         </div>
 
         {/* Notes panel (inline below) */}
@@ -137,7 +121,7 @@ export default function SceneEditorPage({
           {showNotes && !isDistractionFree && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
+              animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="border-t border-border overflow-hidden"
@@ -170,11 +154,7 @@ export default function SceneEditorPage({
       {/* AI Panel */}
       <AnimatePresence>
         {showAI && !isDistractionFree && (
-          <AIPanel
-            sceneId={sceneId}
-            projectId={projectId}
-            onClose={() => setShowAI(false)}
-          />
+          <AIPanel sceneId={sceneId} projectId={projectId} onClose={() => setShowAI(false)} />
         )}
       </AnimatePresence>
     </div>

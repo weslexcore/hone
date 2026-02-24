@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
-import { useProject, useChapter, useScene } from '@/lib/db/hooks';
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { useProject, useChapter, useScene } from "@/lib/db/hooks";
 
 /**
  * Build breadcrumbs from the URL. For project routes we resolve actual
@@ -13,13 +13,13 @@ import { useProject, useChapter, useScene } from '@/lib/db/hooks';
  */
 function useBreadcrumbs() {
   const pathname = usePathname();
-  const segments = pathname.split('/').filter(Boolean);
+  const segments = pathname.split("/").filter(Boolean);
 
   // Detect project-route IDs by position:
   //   /project/[projectId]
   //   /project/[projectId]/[chapterId]
   //   /project/[projectId]/[chapterId]/[sceneId]
-  const isProjectRoute = segments[0] === 'project';
+  const isProjectRoute = segments[0] === "project";
   const projectId = isProjectRoute ? segments[1] : undefined;
   const chapterId = isProjectRoute ? segments[2] : undefined;
   const sceneId = isProjectRoute ? segments[3] : undefined;
@@ -31,34 +31,34 @@ function useBreadcrumbs() {
   const crumbs: { label: string; href: string }[] = [];
 
   if (isProjectRoute) {
-    crumbs.push({ label: 'Projects', href: '/dashboard' });
+    crumbs.push({ label: "Projects", href: "/dashboard" });
 
     if (projectId) {
       crumbs.push({
-        label: project?.title || 'Project',
+        label: project?.title || "Project",
         href: `/project/${projectId}`,
       });
     }
     if (chapterId) {
       crumbs.push({
-        label: chapter?.title || 'Chapter',
+        label: chapter?.title || "Chapter",
         href: `/project/${projectId}/${chapterId}`,
       });
     }
     if (sceneId) {
       crumbs.push({
-        label: scene?.title || 'Scene',
+        label: scene?.title || "Scene",
         href: `/project/${projectId}/${chapterId}/${sceneId}`,
       });
     }
   } else {
     // Non-project routes — derive label from the URL segment
-    let path = '';
+    let path = "";
     for (const segment of segments) {
       path += `/${segment}`;
       const label = segment
-        .replace(/\[.*?\]/g, '')
-        .replace(/-/g, ' ')
+        .replace(/\[.*?\]/g, "")
+        .replace(/-/g, " ")
         .replace(/^\w/, (c) => c.toUpperCase());
       if (label) {
         crumbs.push({ label, href: path });
@@ -77,9 +77,7 @@ export function Header() {
       <nav className="flex items-center gap-1 text-sm">
         {crumbs.map((crumb, i) => (
           <span key={crumb.href} className="flex items-center gap-1">
-            {i > 0 && (
-              <ChevronRight size={14} className="text-text-muted" />
-            )}
+            {i > 0 && <ChevronRight size={14} className="text-text-muted" />}
             {i === crumbs.length - 1 ? (
               <span className="text-text-primary font-medium truncate max-w-[200px]">
                 {crumb.label}
@@ -88,7 +86,7 @@ export function Header() {
               <Link
                 href={crumb.href}
                 className={cn(
-                  'text-text-muted hover:text-text-secondary transition-colors truncate max-w-[200px]'
+                  "text-text-muted hover:text-text-secondary transition-colors truncate max-w-[200px]",
                 )}
               >
                 {crumb.label}

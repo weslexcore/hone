@@ -1,16 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils/cn';
-import { useChapters, useScenes } from '@/lib/db/hooks';
-import {
-  ChevronRight,
-  ChevronDown,
-  FileText,
-  BookOpen,
-} from 'lucide-react';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils/cn";
+import { useChapters, useScenes } from "@/lib/db/hooks";
+import { ChevronRight, ChevronDown, FileText, BookOpen } from "lucide-react";
 
 function ChapterItem({
   chapter,
@@ -21,9 +16,7 @@ function ChapterItem({
 }) {
   const pathname = usePathname();
   const scenes = useScenes(chapter.id);
-  const [expanded, setExpanded] = useState(
-    pathname.includes(chapter.id)
-  );
+  const [expanded, setExpanded] = useState(pathname.includes(chapter.id));
 
   const isChapterActive = pathname === `/project/${projectId}/${chapter.id}`;
 
@@ -39,10 +32,10 @@ function ChapterItem({
         <Link
           href={`/project/${projectId}/${chapter.id}`}
           className={cn(
-            'flex-1 flex items-center gap-2 rounded-md px-2 py-1 text-sm truncate transition-colors',
+            "flex-1 flex items-center gap-2 rounded-md px-2 py-1 text-sm truncate transition-colors",
             isChapterActive
-              ? 'text-accent bg-accent-muted'
-              : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+              ? "text-accent bg-accent-muted"
+              : "text-text-secondary hover:text-text-primary hover:bg-surface-hover",
           )}
         >
           <BookOpen size={14} className="shrink-0" />
@@ -59,10 +52,10 @@ function ChapterItem({
                 key={scene.id}
                 href={`/project/${projectId}/${chapter.id}/${scene.id}`}
                 className={cn(
-                  'flex items-center gap-2 rounded-md px-2 py-1 text-xs truncate transition-colors',
+                  "flex items-center gap-2 rounded-md px-2 py-1 text-xs truncate transition-colors",
                   isSceneActive
-                    ? 'text-accent bg-accent-muted'
-                    : 'text-text-muted hover:text-text-secondary hover:bg-surface-hover'
+                    ? "text-accent bg-accent-muted"
+                    : "text-text-muted hover:text-text-secondary hover:bg-surface-hover",
                 )}
               >
                 <FileText size={12} className="shrink-0" />

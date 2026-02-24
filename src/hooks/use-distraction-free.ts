@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from "react";
 
 export function useDistractionFree() {
   const [isActive, setIsActive] = useState(false);
@@ -11,17 +11,17 @@ export function useDistractionFree() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "f") {
         e.preventDefault();
         toggle();
       }
-      if (e.key === 'Escape' && isActive) {
+      if (e.key === "Escape" && isActive) {
         exit();
       }
     };
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [toggle, exit, isActive]);
 
   return { isActive, toggle, enter, exit };

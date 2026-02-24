@@ -1,25 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
-import { createEditorExtensions } from '@/lib/editor/extensions';
-import { EditorToolbar } from '@/components/editor/editor-toolbar';
-import { WordCountBar } from '@/components/editor/word-count-bar';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogTitle } from '@/components/ui/dialog';
-import { PasteAIResponse } from '@/components/ai/paste-ai-response';
-import { useAI } from '@/providers/ai-provider';
-import { useToast } from '@/components/ui/toast';
-import {
-  useScenes,
-  createScene,
-  deleteScene,
-  propagateWordCount,
-} from '@/lib/db/hooks';
-import { sceneExtractionPrompt, formatPromptForCopy } from '@/lib/ai/prompts';
-import { stripCodeFences } from '@/lib/ai/client';
-import { AnimatePresence } from 'motion/react';
-import { AIPanel } from '@/components/ai/ai-panel';
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import { createEditorExtensions } from "@/lib/editor/extensions";
+import { EditorToolbar } from "@/components/editor/editor-toolbar";
+import { WordCountBar } from "@/components/editor/word-count-bar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import { PasteAIResponse } from "@/components/ai/paste-ai-response";
+import { useAI } from "@/providers/ai-provider";
+import { useToast } from "@/components/ui/toast";
+import { useScenes, createScene, deleteScene, propagateWordCount } from "@/lib/db/hooks";
+import { sceneExtractionPrompt, formatPromptForCopy } from "@/lib/ai/prompts";
+import { stripCodeFences } from "@/lib/ai/client";
+import { AnimatePresence } from "motion/react";
+import { AIPanel } from "@/components/ai/ai-panel";
 import {
   Sparkles,
   Loader2,
@@ -28,7 +23,7 @@ import {
   SplitSquareHorizontal,
   FileText,
   Scissors,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface ChapterWriterProps {
   chapterId: string;
@@ -44,16 +39,12 @@ interface ExtractedScene {
 /** Generate a title from the first few words of content */
 function titleFromContent(content: string): string {
   const words = content.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 'Untitled Scene';
-  const slice = words.slice(0, 5).join(' ');
+  if (words.length === 0) return "Untitled Scene";
+  const slice = words.slice(0, 5).join(" ");
   return words.length > 5 ? `${slice}…` : slice;
 }
 
-export function ChapterWriter({
-  chapterId,
-  projectId,
-  onScenesCreated,
-}: ChapterWriterProps) {
+export function ChapterWriter({ chapterId, projectId, onScenesCreated }: ChapterWriterProps) {
   const scenes = useScenes(chapterId);
   const hasLoadedScenes = useRef(false);
 
@@ -74,7 +65,7 @@ export function ChapterWriter({
 
     scenes.forEach((scene, index) => {
       if (index > 0) {
-        combinedNodes.push({ type: 'horizontalRule' });
+        combinedNodes.push({ type: "horizontalRule" });
       }
 
       if (scene.content) {
@@ -85,49 +76,47 @@ export function ChapterWriter({
           }
         } catch {
           if (scene.contentHtml) {
-            const div = document.createElement('div');
+            const div = document.createElement("div");
             div.innerHTML = scene.contentHtml;
-            const text = div.textContent || '';
+            const text = div.textContent || "";
             text
               .split(/\n\n+/)
               .filter(Boolean)
               .forEach((p) => {
                 combinedNodes.push({
-                  type: 'paragraph',
-                  content: [{ type: 'text', text: p.trim() }],
+                  type: "paragraph",
+                  content: [{ type: "text", text: p.trim() }],
                 });
               });
           }
         }
       } else if (scene.contentHtml) {
-        const div = document.createElement('div');
+        const div = document.createElement("div");
         div.innerHTML = scene.contentHtml;
-        const text = div.textContent || '';
+        const text = div.textContent || "";
         text
           .split(/\n\n+/)
           .filter(Boolean)
           .forEach((p) => {
             combinedNodes.push({
-              type: 'paragraph',
-              content: [{ type: 'text', text: p.trim() }],
+              type: "paragraph",
+              content: [{ type: "text", text: p.trim() }],
             });
           });
       }
     });
 
     if (combinedNodes.length === 0) return undefined;
-    return { type: 'doc', content: combinedNodes };
+    return { type: "doc", content: combinedNodes };
   }, [scenes]);
 
   // ---- Editor ----
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: createEditorExtensions(
-      'Write your chapter here… Type --- to mark scene breaks.'
-    ),
+    extensions: createEditorExtensions("Write your chapter here… Type --- to mark scene breaks."),
     editorProps: {
-      attributes: { class: 'ProseMirror' },
+      attributes: { class: "ProseMirror" },
     },
     onUpdate: () => {
       // Re-derive the live scene count whenever content changes
@@ -138,9 +127,7 @@ export function ChapterWriter({
   // Load existing scenes into editor on first availability
   useEffect(() => {
     if (editor && initialContent && !hasLoadedScenes.current) {
-      editor.commands.setContent(
-        initialContent as Record<string, unknown>
-      );
+      editor.commands.setContent(initialContent as Record<string, unknown>);
       hasLoadedScenes.current = true;
     }
   }, [editor, initialContent]);
@@ -174,11 +161,11 @@ export function ChapterWriter({
   // ---- Helpers ----
 
   const getPlainText = useCallback(() => {
-    if (!editor) return '';
+    if (!editor) return "";
     const html = editor.getHTML();
-    const div = document.createElement('div');
+    const div = document.createElement("div");
     div.innerHTML = html;
-    return div.textContent || '';
+    return div.textContent || "";
   }, [editor]);
 
   /**
@@ -186,15 +173,12 @@ export function ChapterWriter({
    * Re-uses the existing scene title if one exists at that position,
    * otherwise generates one from the first few words.
    */
-  const titleForScene = useCallback(
-    (content: string, index: number): string => {
-      if (index < existingSceneTitles.current.length) {
-        return existingSceneTitles.current[index];
-      }
-      return titleFromContent(content);
-    },
-    []
-  );
+  const titleForScene = useCallback((content: string, index: number): string => {
+    if (index < existingSceneTitles.current.length) {
+      return existingSceneTitles.current[index];
+    }
+    return titleFromContent(content);
+  }, []);
 
   // ---- Split on --- (automatic — primary action) ----
 
@@ -212,8 +196,8 @@ export function ChapterWriter({
 
       if (textParts.length <= 1) {
         toast(
-          'No scene breaks found. Type --- on its own line to mark where scenes should split.',
-          'info'
+          "No scene breaks found. Type --- on its own line to mark where scenes should split.",
+          "info",
         );
         return;
       }
@@ -222,19 +206,19 @@ export function ChapterWriter({
         textParts.map((content, i) => ({
           title: titleForScene(content.trim(), i),
           content: content.trim(),
-        }))
+        })),
       );
     } else {
       setExtractedScenes(
         htmlParts.map((htmlPart, i) => {
-          const div = document.createElement('div');
+          const div = document.createElement("div");
           div.innerHTML = htmlPart;
-          const content = (div.textContent || '').trim();
+          const content = (div.textContent || "").trim();
           return {
             title: titleForScene(content, i),
             content,
           };
-        })
+        }),
       );
     }
 
@@ -246,7 +230,7 @@ export function ChapterWriter({
   const handleAIExtract = useCallback(async () => {
     const text = getPlainText();
     if (!text.trim()) {
-      toast('Write some content first', 'error');
+      toast("Write some content first", "error");
       return;
     }
 
@@ -256,14 +240,14 @@ export function ChapterWriter({
       const result = await sendRequest(systemPrompt, userMessage);
       const parsed = JSON.parse(stripCodeFences(result)) as ExtractedScene[];
       if (!Array.isArray(parsed) || parsed.length === 0) {
-        toast('AI returned no scenes', 'error');
+        toast("AI returned no scenes", "error");
         return;
       }
       // AI provides its own titles — leave them as-is
       setExtractedScenes(parsed);
       setShowPreview(true);
     } catch {
-      toast('Failed to extract scenes', 'error');
+      toast("Failed to extract scenes", "error");
     }
   }, [getPlainText, sendRequest, toast]);
 
@@ -272,21 +256,17 @@ export function ChapterWriter({
   const handleCopyForExtraction = useCallback(async () => {
     const text = getPlainText();
     if (!text.trim()) {
-      toast('Write some content first', 'error');
+      toast("Write some content first", "error");
       return;
     }
 
     const { systemPrompt, userMessage } = sceneExtractionPrompt(text);
-    const formatted = formatPromptForCopy(
-      'scene_extraction',
-      systemPrompt,
-      userMessage
-    );
+    const formatted = formatPromptForCopy("scene_extraction", systemPrompt, userMessage);
 
     await navigator.clipboard.writeText(formatted);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast('Extraction prompt copied', 'success');
+    toast("Extraction prompt copied", "success");
   }, [getPlainText, toast]);
 
   // ---- Pasted AI response ----
@@ -296,20 +276,20 @@ export function ChapterWriter({
       try {
         const arr = Array.isArray(data) ? data : [data];
         const parsed = arr.map((s: Record<string, unknown>) => ({
-          title: (s.title as string) || 'Untitled Scene',
-          content: (s.content as string) || '',
+          title: (s.title as string) || "Untitled Scene",
+          content: (s.content as string) || "",
         }));
         if (parsed.length === 0 || !parsed[0].content) {
-          toast('Invalid scene data', 'error');
+          toast("Invalid scene data", "error");
           return;
         }
         setExtractedScenes(parsed);
         setShowPreview(true);
       } catch {
-        toast('Could not parse scenes', 'error');
+        toast("Could not parse scenes", "error");
       }
     },
-    [toast]
+    [toast],
   );
 
   // ---- Save scenes to DB ----
@@ -329,16 +309,14 @@ export function ChapterWriter({
       for (const scene of extractedScenes) {
         const paragraphs = scene.content.split(/\n\n+/).filter(Boolean);
         const tiptapDoc = {
-          type: 'doc',
+          type: "doc",
           content: paragraphs.map((p) => ({
-            type: 'paragraph',
-            content: [{ type: 'text', text: p.trim() }],
+            type: "paragraph",
+            content: [{ type: "text", text: p.trim() }],
           })),
         };
         const contentJson = JSON.stringify(tiptapDoc);
-        const contentHtml = paragraphs
-          .map((p) => `<p>${p.trim()}</p>`)
-          .join('');
+        const contentHtml = paragraphs.map((p) => `<p>${p.trim()}</p>`).join("");
         const wordCount = scene.content.split(/\s+/).filter(Boolean).length;
 
         const id = await createScene(chapterId, projectId, {
@@ -354,38 +332,25 @@ export function ChapterWriter({
       existingSceneTitles.current = extractedScenes.map((s) => s.title);
 
       toast(
-        `${extractedScenes.length} scene${extractedScenes.length > 1 ? 's' : ''} created`,
-        'success'
+        `${extractedScenes.length} scene${extractedScenes.length > 1 ? "s" : ""} created`,
+        "success",
       );
       setShowPreview(false);
       setExtractedScenes([]);
       editor?.commands.clearContent();
       onScenesCreated();
     } catch {
-      toast('Failed to save scenes', 'error');
+      toast("Failed to save scenes", "error");
     } finally {
       setIsSaving(false);
     }
-  }, [
-    extractedScenes,
-    scenes,
-    chapterId,
-    projectId,
-    editor,
-    toast,
-    onScenesCreated,
-  ]);
+  }, [extractedScenes, scenes, chapterId, projectId, editor, toast, onScenesCreated]);
 
   // ---- Update title in preview ----
 
-  const updateSceneTitle = useCallback(
-    (index: number, title: string) => {
-      setExtractedScenes((prev) =>
-        prev.map((s, i) => (i === index ? { ...s, title } : s))
-      );
-    },
-    []
-  );
+  const updateSceneTitle = useCallback((index: number, title: string) => {
+    setExtractedScenes((prev) => prev.map((s, i) => (i === index ? { ...s, title } : s)));
+  }, []);
 
   if (!editor) return null;
 
@@ -410,7 +375,7 @@ export function ChapterWriter({
               size="sm"
               onClick={() => setShowAI(!showAI)}
               title="AI Analysis"
-              className={showAI ? 'text-accent' : ''}
+              className={showAI ? "text-accent" : ""}
             >
               <Sparkles size={14} />
               Analyze
@@ -425,12 +390,7 @@ export function ChapterWriter({
               Extract Scenes
             </Button>
             {hasKey() ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleAIExtract}
-                disabled={isLoading}
-              >
+              <Button variant="secondary" size="sm" onClick={handleAIExtract} disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
@@ -444,13 +404,9 @@ export function ChapterWriter({
                 )}
               </Button>
             ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleCopyForExtraction}
-              >
+              <Button variant="secondary" size="sm" onClick={handleCopyForExtraction}>
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? 'Copied!' : 'Copy for AI'}
+                {copied ? "Copied!" : "Copy for AI"}
               </Button>
             )}
           </div>
@@ -466,17 +422,13 @@ export function ChapterWriter({
           <div className="border-t border-border px-4 py-3">
             <PasteAIResponse
               onParsed={handlePastedExtraction}
-              expectedShape={'JSON array of { title, content }'}
+              expectedShape={"JSON array of { title, content }"}
             />
           </div>
         )}
 
         {/* Scene Preview Dialog */}
-        <Dialog
-          open={showPreview}
-          onClose={() => setShowPreview(false)}
-          className="max-w-2xl"
-        >
+        <Dialog open={showPreview} onClose={() => setShowPreview(false)} className="max-w-2xl">
           <DialogTitle>
             <div className="flex items-center gap-2">
               <SplitSquareHorizontal size={18} className="text-accent" />
@@ -485,24 +437,16 @@ export function ChapterWriter({
           </DialogTitle>
 
           <p className="text-xs text-text-muted mb-4">
-            Review the scenes below. Click a title to rename it. Confirm to
-            create all scenes in this chapter
-            {scenes && scenes.length > 0
-              ? ' (existing scenes will be replaced).'
-              : '.'}
+            Review the scenes below. Click a title to rename it. Confirm to create all scenes in
+            this chapter
+            {scenes && scenes.length > 0 ? " (existing scenes will be replaced)." : "."}
           </p>
 
           <div className="max-h-[60vh] overflow-y-auto space-y-3 mb-4">
             {extractedScenes.map((scene, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-border bg-surface p-3"
-              >
+              <div key={i} className="rounded-lg border border-border bg-surface p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <FileText
-                    size={13}
-                    className="text-text-muted shrink-0"
-                  />
+                  <FileText size={13} className="text-text-muted shrink-0" />
                   <input
                     value={scene.title}
                     onChange={(e) => updateSceneTitle(i, e.target.value)}
@@ -524,11 +468,7 @@ export function ChapterWriter({
             <Button variant="ghost" onClick={() => setShowPreview(false)}>
               Cancel
             </Button>
-            <Button
-              variant="primary"
-              onClick={handleConfirmScenes}
-              disabled={isSaving}
-            >
+            <Button variant="primary" onClick={handleConfirmScenes} disabled={isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
@@ -538,7 +478,7 @@ export function ChapterWriter({
                 <>
                   <Check size={14} />
                   Create {extractedScenes.length} Scene
-                  {extractedScenes.length > 1 ? 's' : ''}
+                  {extractedScenes.length > 1 ? "s" : ""}
                 </>
               )}
             </Button>

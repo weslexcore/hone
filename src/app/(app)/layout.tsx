@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { Sidebar } from '@/components/layout/sidebar';
-import { Header } from '@/components/layout/header';
-import { AppProvider } from '@/providers/app-provider';
-import { ToastProvider } from '@/components/ui/toast';
+import { Sidebar } from "@/components/layout/sidebar";
+import { Header } from "@/components/layout/header";
+import { AppProvider } from "@/providers/app-provider";
+import { ToastProvider } from "@/components/ui/toast";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (

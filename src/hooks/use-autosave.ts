@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useCallback, useState } from 'react';
-import type { Editor } from '@tiptap/react';
-import { updateScene, propagateWordCount } from '@/lib/db/hooks';
+import { useEffect, useRef, useCallback, useState } from "react";
+import type { Editor } from "@tiptap/react";
+import { updateScene, propagateWordCount } from "@/lib/db/hooks";
 
 export function useAutosave(editor: Editor | null, sceneId: string | undefined) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -34,9 +34,9 @@ export function useAutosave(editor: Editor | null, sceneId: string | undefined) 
       timeoutRef.current = setTimeout(save, 1000);
     };
 
-    editor.on('update', handler);
+    editor.on("update", handler);
     return () => {
-      editor.off('update', handler);
+      editor.off("update", handler);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [editor, sceneId, save]);
