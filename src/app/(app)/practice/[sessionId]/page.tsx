@@ -25,7 +25,9 @@ import {
   practicePromptGenerationPrompt,
   formatPromptForCopy,
 } from "@/lib/ai/prompts";
-import { stripCodeFences } from "@/lib/ai/client";
+import { parseAIJson } from "@/lib/ai/client";
+import { resolveActiveModel } from "@/lib/storage/api-keys";
+import { DEFAULT_MODELS } from "@/lib/constants/models";
 import { useTimer } from "@/hooks/use-timer";
 import { PracticeEditor } from "@/components/editor/writing-editor";
 import { getCurrentRound, getLatestGradedRound } from "@/lib/practice/utils";
@@ -84,7 +86,7 @@ export default function PracticeSessionPage({
   const router = useRouter();
   const session = usePracticeSession(sessionId);
   const { toast } = useToast();
-  const { hasKey, sendRequest, isLoading } = useAI();
+  const { config, hasKey, sendRequest, isLoading } = useAI();
   const [copied, setCopied] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
@@ -293,7 +295,8 @@ export default function PracticeSessionPage({
 
     try {
       const result = await sendRequest(systemPrompt, userMessage);
-      const feedback = JSON.parse(stripCodeFences(result)) as PracticeFeedback;
+      const feedback = parseAIJson<PracticeFeedback>(result);
+      feedback.gradedBy = resolveActiveModel(config.provider, DEFAULT_MODELS);
 
       if (isMultiRound) {
         await gradeCurrentRound(sessionId, feedback);
@@ -308,7 +311,16 @@ export default function PracticeSessionPage({
     } catch {
       toast("Failed to grade writing", "error");
     }
-  }, [session, sessionId, sendRequest, toast, isMultiRound, previousGradedRound, currentRoundData]);
+  }, [
+    session,
+    sessionId,
+    sendRequest,
+    toast,
+    isMultiRound,
+    previousGradedRound,
+    currentRoundData,
+    config.provider,
+  ]);
 
   const handlePastedGrading = useCallback(
     async (data: unknown) => {
@@ -832,6 +844,11 @@ export default function PracticeSessionPage({
                 {displayScore}
               </div>
               <p className="text-sm text-text-muted">out of 100</p>
+              {displayFeedback?.gradedBy && (
+                <p className="text-[10px] text-text-muted mt-1">
+                  Graded by {displayFeedback.gradedBy}
+                </p>
+              )}
             </Card>
 
             {/* Continue Practicing & Convert to Project buttons */}

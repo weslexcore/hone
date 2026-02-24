@@ -14,6 +14,60 @@ export function stripCodeFences(text: string): string {
 }
 
 /**
+ * Attempt to parse JSON that may have formatting issues from local/smaller models.
+ * Handles: unquoted string values, trailing commas, missing closing braces.
+ */
+export function parseAIJson<T>(raw: string): T {
+  const cleaned = stripCodeFences(raw);
+
+  // Try direct parse first
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    // Fall through to repair
+  }
+
+  // Repair attempt: fix unquoted multi-line string values.
+  // Pattern: "key": <newline><unquoted text> ... next "key" or closing brace.
+  // We wrap unquoted values in double-quotes with escaped inner quotes/newlines.
+  let repaired = cleaned;
+
+  // Find "key": followed by text that isn't a valid JSON value start (" [ { digit true false null)
+  repaired = repaired.replace(
+    /("[\w]+"\s*:\s*)\n([\s\S]*?)(?=\n\s*["\]}])/g,
+    (_match, prefix: string, value: string) => {
+      const escaped = value
+        .trim()
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n");
+      return `${prefix}"${escaped}"`;
+    },
+  );
+
+  // Remove trailing commas before } or ]
+  repaired = repaired.replace(/,\s*([}\]])/g, "$1");
+
+  try {
+    return JSON.parse(repaired) as T;
+  } catch {
+    // Fall through
+  }
+
+  // Last resort: try to extract a JSON object from the text
+  const objectMatch = repaired.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    try {
+      return JSON.parse(objectMatch[0]) as T;
+    } catch {
+      // Fall through
+    }
+  }
+
+  throw new Error("Could not parse AI response as JSON");
+}
+
+/**
  * Check if a URL points to localhost / the user's machine.
  * When deployed to the web, server-side routes can't reach localhost —
  * so we call local Ollama directly from the browser instead.
@@ -53,6 +107,12 @@ async function sendOllamaDirectRequest(
     headers["Authorization"] = `Bearer ${ollamaApiKey}`;
   }
 
+  // Estimate token count (~4 chars per token) to set an adequate context window.
+  // Many Ollama models default to 2048 tokens which is too small for grading prompts
+  // that include the full user response.
+  const estimatedTokens = Math.ceil((systemPrompt.length + userMessage.length) / 4);
+  const numCtx = Math.max(8192, estimatedTokens + 2048);
+
   const response = await fetch(`${ollamaUrl}/api/chat`, {
     method: "POST",
     headers,
@@ -63,6 +123,9 @@ async function sendOllamaDirectRequest(
         { role: "user", content: userMessage },
       ],
       stream: false,
+      options: {
+        num_ctx: numCtx,
+      },
     }),
   });
 

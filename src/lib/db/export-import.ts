@@ -12,6 +12,8 @@ import {
   setOllamaUrl,
   getOllamaModel,
   setOllamaModel,
+  getActiveProvider,
+  setActiveProvider,
 } from "@/lib/storage/api-keys";
 
 // --- Export Format ---
@@ -96,6 +98,7 @@ export async function exportAllData(includeSettings: boolean): Promise<string> {
   if (includeSettings) {
     exportData.settings = {
       theme: getTheme(),
+      aiProvider: getActiveProvider(),
       modelAnthropic: getProviderModel("anthropic") ?? undefined,
       modelOpenai: getProviderModel("openai") ?? undefined,
       ollamaUrl: getOllamaUrl(),
@@ -177,6 +180,7 @@ export function readFileAsJson(file: File): Promise<unknown> {
 
 function applySettings(settings: NonNullable<HoneExportData["settings"]>): void {
   if (settings.theme) setTheme(settings.theme);
+  if (settings.aiProvider) setActiveProvider(settings.aiProvider);
   if (settings.modelAnthropic) setProviderModel("anthropic", settings.modelAnthropic);
   if (settings.modelOpenai) setProviderModel("openai", settings.modelOpenai);
   if (settings.ollamaUrl) setOllamaUrl(settings.ollamaUrl);

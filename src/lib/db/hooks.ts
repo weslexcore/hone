@@ -276,6 +276,10 @@ export async function startNewRound(sessionId: string, durationSeconds: number):
     currentRound: rounds.length - 1,
     status: "in_progress",
     durationSeconds,
+    // Reset top-level score/feedback so the new round shows as ungraded
+    score: null,
+    feedback: null,
+    completedAt: null,
   });
 }
 
@@ -311,6 +315,9 @@ export async function submitCurrentRound(
     wordCount: data.wordCount,
     actualSeconds: data.actualSeconds,
     completedAt: new Date(),
+    // Keep score/feedback null until this round is graded
+    score: null,
+    feedback: null,
   });
 }
 

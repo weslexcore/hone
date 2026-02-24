@@ -5,9 +5,28 @@ const STORAGE_KEY_OPENAI_MODEL = "hone_model_openai";
 const STORAGE_KEY_OLLAMA_URL = "hone_ollama_url";
 const STORAGE_KEY_OLLAMA_MODEL = "hone_ollama_model";
 const STORAGE_KEY_OLLAMA_API_KEY = "hone_ollama_api_key";
+const STORAGE_KEY_ACTIVE_PROVIDER = "hone_ai_provider";
 
 function isBrowser() {
   return typeof window !== "undefined";
+}
+
+const VALID_PROVIDERS = ["anthropic", "openai", "ollama"] as const;
+
+/** Get the persisted AI provider selection. */
+export function getActiveProvider(): "anthropic" | "openai" | "ollama" {
+  if (!isBrowser()) return "anthropic";
+  const stored = localStorage.getItem(STORAGE_KEY_ACTIVE_PROVIDER);
+  if (stored && (VALID_PROVIDERS as readonly string[]).includes(stored)) {
+    return stored as "anthropic" | "openai" | "ollama";
+  }
+  return "anthropic";
+}
+
+/** Persist the AI provider selection. */
+export function setActiveProvider(provider: "anthropic" | "openai" | "ollama"): void {
+  if (!isBrowser()) return;
+  localStorage.setItem(STORAGE_KEY_ACTIVE_PROVIDER, provider);
 }
 
 export function setApiKey(provider: "anthropic" | "openai", key: string): void {
@@ -96,4 +115,13 @@ export function setOllamaApiKey(key: string): void {
 export function removeOllamaApiKey(): void {
   if (!isBrowser()) return;
   localStorage.removeItem(STORAGE_KEY_OLLAMA_API_KEY);
+}
+
+/** Resolve the active model for a given provider, falling back to defaults. */
+export function resolveActiveModel(
+  provider: "anthropic" | "openai" | "ollama",
+  defaults: Record<string, string>,
+): string {
+  if (provider === "ollama") return getOllamaModel();
+  return getProviderModel(provider) || defaults[provider] || "";
 }

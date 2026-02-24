@@ -15,6 +15,14 @@ export async function POST(req: NextRequest) {
       headers["Authorization"] = `Bearer ${ollamaApiKey}`;
     }
 
+    // Estimate token count to set an adequate context window.
+    // Many Ollama models default to 2048 tokens which is too small for prompts
+    // that include full user writing.
+    const estimatedTokens = Math.ceil(
+      ((systemPrompt?.length || 0) + (userMessage?.length || 0)) / 4,
+    );
+    const numCtx = Math.max(8192, estimatedTokens + 2048);
+
     const response = await fetch(`${ollamaUrl}/api/chat`, {
       method: "POST",
       headers,
@@ -25,6 +33,9 @@ export async function POST(req: NextRequest) {
           { role: "user", content: userMessage },
         ],
         stream: false,
+        options: {
+          num_ctx: numCtx,
+        },
       }),
     });
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { LayoutDashboard, PenTool, Timer, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import { ModelSwitcher } from "@/components/layout/model-switcher";
 
 const navItems = [
   { href: "/dashboard", label: "Projects", icon: LayoutDashboard },
@@ -58,8 +59,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="border-t border-border p-3">
+      {/* Footer: Model switcher + Collapse toggle */}
+      <div className="border-t border-border p-3 space-y-1">
+        <ModelSwitcher collapsed={collapsed} />
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex w-full items-center justify-center rounded-lg py-2 text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"

@@ -12,7 +12,7 @@ import { useAI } from "@/providers/ai-provider";
 import { useToast } from "@/components/ui/toast";
 import { useScenes, createScene, deleteScene, propagateWordCount } from "@/lib/db/hooks";
 import { sceneExtractionPrompt, formatPromptForCopy } from "@/lib/ai/prompts";
-import { stripCodeFences } from "@/lib/ai/client";
+import { parseAIJson } from "@/lib/ai/client";
 import { AnimatePresence } from "motion/react";
 import { AIPanel } from "@/components/ai/ai-panel";
 import {
@@ -238,7 +238,7 @@ export function ChapterWriter({ chapterId, projectId, onScenesCreated }: Chapter
 
     try {
       const result = await sendRequest(systemPrompt, userMessage);
-      const parsed = JSON.parse(stripCodeFences(result)) as ExtractedScene[];
+      const parsed = parseAIJson<ExtractedScene[]>(result);
       if (!Array.isArray(parsed) || parsed.length === 0) {
         toast("AI returned no scenes", "error");
         return;

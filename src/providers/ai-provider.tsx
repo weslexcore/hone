@@ -1,12 +1,14 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { AIProvider, AIConfig } from "@/types/ai";
 import {
   getApiKey,
   getOllamaModel,
   getOllamaApiKey,
   getProviderModel,
+  getActiveProvider,
+  setActiveProvider,
 } from "@/lib/storage/api-keys";
 import { DEFAULT_MODELS } from "@/lib/constants/models";
 import { sendAIRequest } from "@/lib/ai/client";
@@ -33,7 +35,20 @@ export function AIProviderComponent({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Restore persisted provider from localStorage after hydration
+  useEffect(() => {
+    const persisted = getActiveProvider();
+    if (persisted !== "anthropic") {
+      setConfig((prev) => ({
+        ...prev,
+        provider: persisted,
+        model: DEFAULT_MODELS[persisted],
+      }));
+    }
+  }, []);
+
   const setProvider = useCallback((provider: AIProvider) => {
+    setActiveProvider(provider);
     setConfig((prev) => ({
       ...prev,
       provider,

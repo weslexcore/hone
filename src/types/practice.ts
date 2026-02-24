@@ -4,6 +4,8 @@ export interface PracticeFeedback {
   improvements: string[];
   tips: string[];
   detailedNotes: string;
+  /** The model that produced this feedback (e.g. "claude-sonnet-4-20250514") */
+  gradedBy?: string;
 }
 
 export interface PracticeRound {
