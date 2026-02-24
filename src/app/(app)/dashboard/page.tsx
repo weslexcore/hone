@@ -39,7 +39,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -109,7 +109,7 @@ export default function DashboardPage() {
                       e.stopPropagation();
                       setDeletingId(project.id);
                     }}
-                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-text-muted hover:text-danger transition-all"
+                    className="absolute top-4 right-4 md:opacity-0 md:group-hover:opacity-100 text-text-muted hover:text-danger transition-all"
                   >
                     <Trash2 size={14} />
                   </button>

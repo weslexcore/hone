@@ -184,7 +184,7 @@ export default function PracticePage() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -448,7 +448,7 @@ export default function PracticePage() {
                             e.stopPropagation();
                             setDeletingSessionId(session.id);
                           }}
-                          className="p-1 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="p-1 text-text-muted hover:text-danger md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 size={12} />
                         </button>

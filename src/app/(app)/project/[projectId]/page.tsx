@@ -94,7 +94,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   ];
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -223,7 +223,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                         {chapter.wordCount.toLocaleString()} words
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

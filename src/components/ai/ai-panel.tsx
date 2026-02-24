@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { motion } from "motion/react";
 import { X, Sparkles, Copy, Check, Loader2, Trash2, Clock } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { PasteAIResponse } from "@/components/ai/paste-ai-response";
 import { useAI } from "@/providers/ai-provider";
@@ -224,6 +225,204 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
   );
 
   const apiKeyConfigured = hasKey();
+  const isMobile = useIsMobile();
+
+  const panelContent = (
+    <div className={cn("flex flex-col h-full", isMobile ? "w-full" : "w-[380px]")}>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={16} className="text-accent" />
+          <span className="text-sm font-medium">AI Analysis</span>
+        </div>
+        <button onClick={onClose} className="text-text-muted hover:text-text-primary">
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-border">
+        <button
+          onClick={() => setActiveTab("suggestions")}
+          className={cn(
+            "flex-1 px-4 py-2 text-xs font-medium transition-colors",
+            activeTab === "suggestions"
+              ? "text-accent border-b-2 border-accent"
+              : "text-text-muted hover:text-text-secondary",
+          )}
+        >
+          Suggestions
+        </button>
+        <button
+          onClick={() => setActiveTab("consistency")}
+          className={cn(
+            "flex-1 px-4 py-2 text-xs font-medium transition-colors",
+            activeTab === "consistency"
+              ? "text-accent border-b-2 border-accent"
+              : "text-text-muted hover:text-text-secondary",
+          )}
+        >
+          Consistency
+        </button>
+      </div>
+
+      {/* Actions */}
+      <div className="p-4 border-b border-border">
+        {apiKeyConfigured ? (
+          <Button
+            variant="primary"
+            size="sm"
+            className="w-full"
+            onClick={activeTab === "suggestions" ? handleAnalyze : handleConsistencyCheck}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                {activeTab === "suggestions" ? "Analyze Writing" : "Check Consistency"}
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button variant="secondary" size="sm" className="w-full" onClick={handleCopyForAI}>
+            {copied ? (
+              <>
+                <Check size={14} className="text-success" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy size={14} />
+                Copy for AI
+              </>
+            )}
+          </Button>
+        )}
+        {!apiKeyConfigured && (
+          <p className="text-xs text-text-muted mt-2 text-center">
+            No API key configured. Copy the prompt to use with your own AI service, or add a key in
+            Settings.
+          </p>
+        )}
+        {!apiKeyConfigured && (
+          <PasteAIResponse
+            onParsed={handlePastedResponse}
+            expectedShape={"JSON array of { type, title, description, suggestedText }"}
+            className="mt-3"
+          />
+        )}
+      </div>
+
+      {/* Results */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {(error || parseError) && (
+          <div className="rounded-lg bg-danger-muted border border-danger/20 p-3 mb-4">
+            <p className="text-xs text-danger">{error || parseError}</p>
+          </div>
+        )}
+
+        {filteredBatches.length > 0 ? (
+          <div className="space-y-5">
+            {filteredBatches.map((batch) => {
+              const visibleSuggestions = batch.suggestions.filter(
+                (s) => !batch.dismissedIds.includes(s.id),
+              );
+              if (visibleSuggestions.length === 0) return null;
+
+              return (
+                <div key={batch.id}>
+                  {/* Batch header with date */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                      <Clock size={10} />
+                      {formatDate(batch.createdAt)}
+                      <span className="text-text-muted/50">·</span>
+                      <span>
+                        {visibleSuggestions.length}/{batch.suggestions.length}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteBatch(batch.id)}
+                      className="text-text-muted hover:text-danger transition-colors"
+                      title="Delete this analysis"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+
+                  {/* Suggestions in this batch */}
+                  <div className="space-y-2">
+                    {visibleSuggestions.map((suggestion) => (
+                      <div
+                        key={suggestion.id}
+                        className="rounded-lg border border-border bg-surface p-3 group"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h4 className="text-sm font-medium text-text-primary">
+                            {suggestion.title}
+                          </h4>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-overlay text-text-muted uppercase">
+                              {suggestion.type}
+                            </span>
+                            <button
+                              onClick={() => handleDismissSuggestion(batch.id, suggestion.id)}
+                              className="md:opacity-0 md:group-hover:opacity-100 text-text-muted hover:text-text-primary transition-all"
+                              title="Dismiss"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-text-secondary leading-relaxed">
+                          {suggestion.description}
+                        </p>
+                        {suggestion.suggestedText && (
+                          <div className="mt-2 rounded bg-accent-muted px-2 py-1.5">
+                            <p className="text-xs text-accent font-serif italic">
+                              {suggestion.suggestedText}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : !isLoading ? (
+          <div className="text-center py-8">
+            <Sparkles size={24} className="mx-auto text-text-muted mb-2" />
+            <p className="text-xs text-text-muted">
+              {activeTab === "suggestions"
+                ? "Click Analyze to get writing suggestions"
+                : "Click Check to find consistency issues"}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        className="fixed inset-0 z-50 bg-surface-raised"
+      >
+        {panelContent}
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -233,186 +432,7 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
       transition={{ duration: 0.2 }}
       className="border-l border-border bg-surface-raised overflow-hidden shrink-0"
     >
-      <div className="flex flex-col h-full w-[380px]">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-accent" />
-            <span className="text-sm font-medium">AI Analysis</span>
-          </div>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-border">
-          <button
-            onClick={() => setActiveTab("suggestions")}
-            className={cn(
-              "flex-1 px-4 py-2 text-xs font-medium transition-colors",
-              activeTab === "suggestions"
-                ? "text-accent border-b-2 border-accent"
-                : "text-text-muted hover:text-text-secondary",
-            )}
-          >
-            Suggestions
-          </button>
-          <button
-            onClick={() => setActiveTab("consistency")}
-            className={cn(
-              "flex-1 px-4 py-2 text-xs font-medium transition-colors",
-              activeTab === "consistency"
-                ? "text-accent border-b-2 border-accent"
-                : "text-text-muted hover:text-text-secondary",
-            )}
-          >
-            Consistency
-          </button>
-        </div>
-
-        {/* Actions */}
-        <div className="p-4 border-b border-border">
-          {apiKeyConfigured ? (
-            <Button
-              variant="primary"
-              size="sm"
-              className="w-full"
-              onClick={activeTab === "suggestions" ? handleAnalyze : handleConsistencyCheck}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  {activeTab === "suggestions" ? "Analyze Writing" : "Check Consistency"}
-                </>
-              )}
-            </Button>
-          ) : (
-            <Button variant="secondary" size="sm" className="w-full" onClick={handleCopyForAI}>
-              {copied ? (
-                <>
-                  <Check size={14} className="text-success" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy size={14} />
-                  Copy for AI
-                </>
-              )}
-            </Button>
-          )}
-          {!apiKeyConfigured && (
-            <p className="text-xs text-text-muted mt-2 text-center">
-              No API key configured. Copy the prompt to use with your own AI service, or add a key
-              in Settings.
-            </p>
-          )}
-          {!apiKeyConfigured && (
-            <PasteAIResponse
-              onParsed={handlePastedResponse}
-              expectedShape={"JSON array of { type, title, description, suggestedText }"}
-              className="mt-3"
-            />
-          )}
-        </div>
-
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {(error || parseError) && (
-            <div className="rounded-lg bg-danger-muted border border-danger/20 p-3 mb-4">
-              <p className="text-xs text-danger">{error || parseError}</p>
-            </div>
-          )}
-
-          {filteredBatches.length > 0 ? (
-            <div className="space-y-5">
-              {filteredBatches.map((batch) => {
-                const visibleSuggestions = batch.suggestions.filter(
-                  (s) => !batch.dismissedIds.includes(s.id),
-                );
-                if (visibleSuggestions.length === 0) return null;
-
-                return (
-                  <div key={batch.id}>
-                    {/* Batch header with date */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                        <Clock size={10} />
-                        {formatDate(batch.createdAt)}
-                        <span className="text-text-muted/50">·</span>
-                        <span>
-                          {visibleSuggestions.length}/{batch.suggestions.length}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteBatch(batch.id)}
-                        className="text-text-muted hover:text-danger transition-colors"
-                        title="Delete this analysis"
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-
-                    {/* Suggestions in this batch */}
-                    <div className="space-y-2">
-                      {visibleSuggestions.map((suggestion) => (
-                        <div
-                          key={suggestion.id}
-                          className="rounded-lg border border-border bg-surface p-3 group"
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <h4 className="text-sm font-medium text-text-primary">
-                              {suggestion.title}
-                            </h4>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-overlay text-text-muted uppercase">
-                                {suggestion.type}
-                              </span>
-                              <button
-                                onClick={() => handleDismissSuggestion(batch.id, suggestion.id)}
-                                className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-text-primary transition-all"
-                                title="Dismiss"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-xs text-text-secondary leading-relaxed">
-                            {suggestion.description}
-                          </p>
-                          {suggestion.suggestedText && (
-                            <div className="mt-2 rounded bg-accent-muted px-2 py-1.5">
-                              <p className="text-xs text-accent font-serif italic">
-                                {suggestion.suggestedText}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : !isLoading ? (
-            <div className="text-center py-8">
-              <Sparkles size={24} className="mx-auto text-text-muted mb-2" />
-              <p className="text-xs text-text-muted">
-                {activeTab === "suggestions"
-                  ? "Click Analyze to get writing suggestions"
-                  : "Click Check to find consistency issues"}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </div>
+      {panelContent}
     </motion.div>
   );
 }

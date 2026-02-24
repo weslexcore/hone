@@ -2,9 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Menu } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useProject, useChapter, useScene } from "@/lib/db/hooks";
+import { useSidebar } from "@/providers/sidebar-provider";
 
 /**
  * Build breadcrumbs from the URL. For project routes we resolve actual
@@ -71,22 +72,29 @@ function useBreadcrumbs() {
 
 export function Header() {
   const crumbs = useBreadcrumbs();
+  const { setMobileOpen } = useSidebar();
 
   return (
-    <header className="flex h-14 items-center border-b border-border px-6">
-      <nav className="flex items-center gap-1 text-sm">
+    <header className="flex h-14 items-center border-b border-border px-4 md:px-6">
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="mr-3 p-1 text-text-muted hover:text-text-primary transition-colors md:hidden"
+      >
+        <Menu size={20} />
+      </button>
+      <nav className="flex items-center gap-1 text-sm min-w-0">
         {crumbs.map((crumb, i) => (
-          <span key={crumb.href} className="flex items-center gap-1">
-            {i > 0 && <ChevronRight size={14} className="text-text-muted" />}
+          <span key={crumb.href} className="flex items-center gap-1 min-w-0">
+            {i > 0 && <ChevronRight size={14} className="text-text-muted shrink-0" />}
             {i === crumbs.length - 1 ? (
-              <span className="text-text-primary font-medium truncate max-w-[200px]">
+              <span className="text-text-primary font-medium truncate max-w-[120px] md:max-w-[200px]">
                 {crumb.label}
               </span>
             ) : (
               <Link
                 href={crumb.href}
                 className={cn(
-                  "text-text-muted hover:text-text-secondary transition-colors truncate max-w-[200px]",
+                  "text-text-muted hover:text-text-secondary transition-colors truncate max-w-[120px] md:max-w-[200px]",
                 )}
               >
                 {crumb.label}

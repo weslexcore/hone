@@ -437,7 +437,7 @@ export default function PracticeSessionPage({
     return (
       <div className={cn("flex flex-col h-full", isFullscreen && "fixed inset-0 z-50 bg-surface")}>
         {/* Timer bar */}
-        <div className="border-b border-border px-6 py-3">
+        <div className="border-b border-border px-4 md:px-6 py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               {/* Timer display */}
@@ -477,7 +477,7 @@ export default function PracticeSessionPage({
                 </div>
               )}
               {!isFullscreen && genreLabels.length > 0 && (
-                <div className="flex gap-1.5">
+                <div className="hidden md:flex gap-1.5">
                   {genreLabels.map((g) => (
                     <Badge key={g} variant="muted" className="text-[10px]">
                       {g}
@@ -486,7 +486,7 @@ export default function PracticeSessionPage({
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {isRevisionRound && previousGradedRound?.feedback && (
                 <button
                   onClick={() => setShowFeedbackPanel(!showFeedbackPanel)}
@@ -505,7 +505,7 @@ export default function PracticeSessionPage({
               </button>
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
-                className="p-1.5 rounded text-text-muted hover:text-text-primary transition-colors"
+                className="hidden sm:block p-1.5 rounded text-text-muted hover:text-text-primary transition-colors"
                 title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
               >
                 {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
@@ -515,7 +515,9 @@ export default function PracticeSessionPage({
                   {/* Timer expired: button to re-open the dialog */}
                   <Button variant="secondary" size="sm" onClick={() => setShowTimerDialog(true)}>
                     <Clock size={14} />
-                    {!isFullscreen && "Continue or Submit"}
+                    <span className="hidden sm:inline">
+                      {!isFullscreen && "Continue or Submit"}
+                    </span>
                   </Button>
                 </>
               ) : !timer.isRunning && !timerAutoStarted.current ? (
@@ -528,7 +530,8 @@ export default function PracticeSessionPage({
                       timer.start();
                     }}
                   >
-                    Start Writing
+                    <span className="hidden sm:inline">Start Writing</span>
+                    <span className="sm:hidden">Start</span>
                   </Button>
                   <Button
                     variant="ghost"
@@ -540,14 +543,16 @@ export default function PracticeSessionPage({
                     }}
                   >
                     <Trash2 size={14} />
-                    Discard
+                    <span className="hidden sm:inline">Discard</span>
                   </Button>
                 </>
               ) : (
                 <>
                   <Button variant="secondary" size="sm" onClick={handleSubmit}>
                     <Send size={14} />
-                    {!isFullscreen && (isUntimed ? "Submit" : "Submit Early")}
+                    <span className="hidden sm:inline">
+                      {!isFullscreen && (isUntimed ? "Submit" : "Submit Early")}
+                    </span>
                   </Button>
                   <Button
                     variant="ghost"
@@ -556,7 +561,7 @@ export default function PracticeSessionPage({
                     className="text-text-muted hover:text-danger"
                   >
                     <X size={14} />
-                    {!isFullscreen && "Discard"}
+                    <span className="hidden sm:inline">{!isFullscreen && "Discard"}</span>
                   </Button>
                 </>
               )}
@@ -617,7 +622,7 @@ export default function PracticeSessionPage({
 
         {/* Prompt */}
         {showPrompt && (
-          <div className="border-b border-border bg-surface-raised/30 px-6 py-3">
+          <div className="border-b border-border bg-surface-raised/30 px-4 md:px-6 py-3">
             <div className={cn("flex items-start gap-3", isFullscreen && "max-w-[65ch] mx-auto")}>
               <p className="text-sm text-text-secondary font-serif italic leading-relaxed flex-1">
                 {session.prompt}
@@ -712,7 +717,7 @@ export default function PracticeSessionPage({
 
   // Submitted or graded: show results
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="p-4 md:p-8 max-w-3xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

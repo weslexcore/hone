@@ -648,7 +648,10 @@ function DataManagementSection() {
     setImporting(true);
     try {
       const r = await importDataReplace(pendingData);
-      toast(`Replaced all data: ${r.projects} projects, ${r.scenes} scenes, ${r.practiceSessions} practice sessions`, "success");
+      toast(
+        `Replaced all data: ${r.projects} projects, ${r.scenes} scenes, ${r.practiceSessions} practice sessions`,
+        "success",
+      );
       setImportDialogOpen(false);
       setPendingData(null);
     } catch {
@@ -664,7 +667,12 @@ function DataManagementSection() {
     try {
       const r = await importDataMerge(pendingData);
       const added = r.projects + r.chapters + r.scenes + r.practiceSessions + r.suggestionBatches;
-      toast(added > 0 ? `Merged: ${r.projects} projects, ${r.scenes} scenes, ${r.practiceSessions} practice sessions added` : "No new data to merge", "success");
+      toast(
+        added > 0
+          ? `Merged: ${r.projects} projects, ${r.scenes} scenes, ${r.practiceSessions} practice sessions added`
+          : "No new data to merge",
+        "success",
+      );
       setImportDialogOpen(false);
       setPendingData(null);
     } catch {
@@ -717,8 +725,8 @@ function DataManagementSection() {
             <h3 className="text-sm font-medium text-text-primary">Import Data</h3>
           </div>
           <p className="text-xs text-text-muted">
-            Restore data from a previously exported <code className="text-accent/70">.hone.json</code>{" "}
-            file.
+            Restore data from a previously exported{" "}
+            <code className="text-accent/70">.hone.json</code> file.
           </p>
           <input
             type="file"
@@ -733,7 +741,13 @@ function DataManagementSection() {
         </Card>
       </section>
 
-      <Dialog open={importDialogOpen} onClose={() => { setImportDialogOpen(false); setPendingData(null); }}>
+      <Dialog
+        open={importDialogOpen}
+        onClose={() => {
+          setImportDialogOpen(false);
+          setPendingData(null);
+        }}
+      >
         <DialogTitle>Import Data</DialogTitle>
         {pendingData && (
           <>
@@ -752,8 +766,8 @@ function DataManagementSection() {
             )}
             <div className="space-y-2 text-xs text-text-muted mb-5">
               <p>
-                <strong className="text-text-secondary">Replace</strong> removes all existing data and
-                replaces it with the imported data.
+                <strong className="text-text-secondary">Replace</strong> removes all existing data
+                and replaces it with the imported data.
               </p>
               <p>
                 <strong className="text-text-secondary">Merge</strong> keeps your existing data and
@@ -764,7 +778,10 @@ function DataManagementSection() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setImportDialogOpen(false); setPendingData(null); }}
+                onClick={() => {
+                  setImportDialogOpen(false);
+                  setPendingData(null);
+                }}
                 disabled={importing}
               >
                 Cancel
@@ -788,7 +805,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -855,7 +872,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="text-xs text-text-muted block mb-2">Active Provider</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {(
                   [
                     { id: "anthropic", label: "Anthropic (Claude)" },
