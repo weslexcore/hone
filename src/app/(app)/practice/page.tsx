@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import { usePracticeSessions, createPracticeSession, deletePracticeSession } fro
 import { GENRES, PRACTICE_DURATIONS } from "@/lib/constants/genres";
 import { practicePromptGenerationPrompt, formatPromptForCopy } from "@/lib/ai/prompts";
 import { PasteAIResponse } from "@/components/ai/paste-ai-response";
-import { Timer, Play, Copy, Check, Clock, Loader2, Trash2, Plus } from "lucide-react";
+import { useFocusAreas } from "@/hooks/use-focus-areas";
+import { FOCUS_AREA_CATEGORIES } from "@/lib/constants/focus-areas";
+import { Timer, Play, Copy, Check, Clock, Loader2, Trash2, Plus, Target } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatDistanceToNow } from "date-fns";
 
@@ -33,6 +35,15 @@ export default function PracticePage() {
   const [copied, setCopied] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string | null>(null);
+  const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  const { focusAreas, strengths, totalGradedSessions } = useFocusAreas(sessions);
+
+  // Defer hasKey() check to avoid SSR/client hydration mismatch (reads localStorage)
+  const showManualFlow = mounted && !hasKey() && !customPrompt;
 
   const toggleGenre = (id: string) => {
     setSelectedGenres((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
@@ -69,6 +80,12 @@ export default function PracticePage() {
       ? Math.round(Number(customMinutes) * 60)
       : selectedDuration;
 
+  const focusAreaLabels = selectedFocusAreas
+    .map((id) => FOCUS_AREA_CATEGORIES.find((c) => c.id === id)?.label)
+    .filter(Boolean) as string[];
+
+  const topStrengthLabels = strengths.slice(0, 3).map((s) => s.category.label);
+
   const handleStart = useCallback(async () => {
     try {
       let prompt = "";
@@ -76,16 +93,26 @@ export default function PracticePage() {
       if (customPrompt) {
         prompt = customPrompt;
       } else if (hasKey()) {
-        const { systemPrompt, userMessage } =
-          practicePromptGenerationPrompt(allSelectedGenreLabels);
+        const { systemPrompt, userMessage } = practicePromptGenerationPrompt(
+          allSelectedGenreLabels,
+          {
+            focusAreas: focusAreaLabels.length > 0 ? focusAreaLabels : undefined,
+            strengths: topStrengthLabels.length > 0 ? topStrengthLabels : undefined,
+          },
+        );
         prompt = await sendRequest(systemPrompt, userMessage);
       } else {
         const genreText = hasGenres ? `${allSelectedGenreLabels.join("/")} ` : "";
-        prompt = `Write a short ${genreText}piece. Focus on vivid sensory detail and a compelling opening line. Your piece should have a clear beginning, middle, and end.`;
+        const focusPart =
+          focusAreaLabels.length > 0
+            ? ` Focus especially on ${focusAreaLabels.join(" and ")}.`
+            : "";
+        prompt = `Write a short ${genreText}piece. Focus on vivid sensory detail and a compelling opening line.${focusPart} Your piece should have a clear beginning, middle, and end.`;
       }
 
       const id = await createPracticeSession({
         genres: [...selectedGenres, ...customGenres],
+        focusAreas: selectedFocusAreas.length > 0 ? selectedFocusAreas : undefined,
         prompt,
         durationSeconds: effectiveDuration,
       });
@@ -99,6 +126,7 @@ export default function PracticePage() {
     hasGenres,
     selectedGenres,
     customGenres,
+    selectedFocusAreas,
     effectiveDuration,
     customPrompt,
     hasKey,
@@ -106,6 +134,8 @@ export default function PracticePage() {
     router,
     toast,
     allSelectedGenreLabels,
+    focusAreaLabels,
+    topStrengthLabels,
   ]);
 
   const handleDeleteSession = useCallback(
@@ -134,14 +164,17 @@ export default function PracticePage() {
   );
 
   const handleCopyPromptRequest = useCallback(async () => {
-    const { systemPrompt, userMessage } = practicePromptGenerationPrompt(allSelectedGenreLabels);
+    const { systemPrompt, userMessage } = practicePromptGenerationPrompt(allSelectedGenreLabels, {
+      focusAreas: focusAreaLabels.length > 0 ? focusAreaLabels : undefined,
+      strengths: topStrengthLabels.length > 0 ? topStrengthLabels : undefined,
+    });
     const formatted = formatPromptForCopy("prompt_generation", systemPrompt, userMessage);
 
     await navigator.clipboard.writeText(formatted);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast("Prompt copied to clipboard", "success");
-  }, [allSelectedGenreLabels, toast]);
+  }, [allSelectedGenreLabels, focusAreaLabels, topStrengthLabels, toast]);
 
   const scoreColor = (score: number | null) => {
     if (score === null) return "text-text-muted";
@@ -269,6 +302,51 @@ export default function PracticePage() {
               </div>
             </div>
 
+            {/* Focus Areas */}
+            {focusAreas.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  <Target size={14} className="inline -mt-0.5 mr-1" />
+                  Focus Areas
+                  <span className="text-text-muted font-normal ml-1">
+                    (from {totalGradedSessions} graded session
+                    {totalGradedSessions !== 1 ? "s" : ""})
+                  </span>
+                </label>
+                <p className="text-xs text-text-muted mb-3">
+                  Select areas to focus your next prompt on
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {focusAreas.map((area) => (
+                    <Badge
+                      key={area.category.id}
+                      variant={selectedFocusAreas.includes(area.category.id) ? "accent" : "default"}
+                      onClick={() =>
+                        setSelectedFocusAreas((prev) =>
+                          prev.includes(area.category.id)
+                            ? prev.filter((id) => id !== area.category.id)
+                            : [...prev, area.category.id],
+                        )
+                      }
+                      className="cursor-pointer text-xs py-1 px-2.5"
+                    >
+                      {area.category.label}
+                      <span className="ml-1 opacity-60">({area.count})</span>
+                    </Badge>
+                  ))}
+                </div>
+                {selectedFocusAreas.length > 0 && (
+                  <p className="mt-2 text-[10px] text-accent">
+                    Prompt will emphasize:{" "}
+                    {selectedFocusAreas
+                      .map((id) => focusAreas.find((a) => a.category.id === id)?.category.label)
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Custom Prompt */}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-3">
@@ -319,7 +397,7 @@ export default function PracticePage() {
                   </>
                 )}
               </Button>
-              {!hasKey() && !customPrompt && (
+              {showManualFlow && (
                 <Button variant="secondary" size="lg" onClick={handleCopyPromptRequest}>
                   {copied ? <Check size={18} /> : <Copy size={18} />}
                 </Button>
@@ -327,7 +405,7 @@ export default function PracticePage() {
             </div>
 
             {/* Paste AI prompt */}
-            {!hasKey() && !customPrompt && (
+            {showManualFlow && (
               <PasteAIResponse
                 onParsed={handlePastedPrompt}
                 placeholder="Paste the AI-generated prompt here..."

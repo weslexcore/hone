@@ -56,16 +56,30 @@ Focus on actual contradictions, not stylistic preferences. Return ONLY the JSON 
   return { systemPrompt, userMessage };
 }
 
-export function practicePromptGenerationPrompt(genres: string[]) {
-  const systemPrompt = `You are a creative writing instructor. Generate a compelling writing prompt.
+export function practicePromptGenerationPrompt(
+  genres: string[],
+  options?: {
+    focusAreas?: string[];
+    strengths?: string[];
+  },
+) {
+  let systemPrompt = `You are a creative writing instructor. Generate a compelling writing prompt.
 
 The prompt should:
 - Be specific enough to give direction but open enough for creative interpretation
 - Include a situation, character, or scenario to work from
 - Be completable in a short writing session (5-30 minutes)
-- Challenge the writer to practice core skills (description, dialogue, tension, etc.)
+- Challenge the writer to practice core skills (description, dialogue, tension, etc.)`;
 
-Return ONLY the prompt text. No preamble or explanation. Keep it to 2-4 sentences.`;
+  if (options?.focusAreas && options.focusAreas.length > 0) {
+    systemPrompt += `\n\nIMPORTANT: The writer needs to practice these specific skills: ${options.focusAreas.join(", ")}. Design the prompt so that it naturally requires the writer to exercise these skills. For example, if they need to work on dialogue, create a scenario with multiple characters who must communicate. If they need pacing work, set up a situation with rising tension.`;
+  }
+
+  if (options?.strengths && options.strengths.length > 0) {
+    systemPrompt += `\n\nThe writer is strong in: ${options.strengths.join(", ")}. Allow room in the prompt for them to leverage these strengths while being challenged in their weaker areas.`;
+  }
+
+  systemPrompt += `\n\nReturn ONLY the prompt text. No preamble or explanation. Keep it to 2-4 sentences.`;
 
   const userMessage =
     genres.length > 0

@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { useAI } from "@/providers/ai-provider";
 import { usePracticeSession, updatePracticeSession, deletePracticeSession } from "@/lib/db/hooks";
 import { GENRES, PRACTICE_DURATIONS } from "@/lib/constants/genres";
+import { FOCUS_AREA_CATEGORIES } from "@/lib/constants/focus-areas";
 import {
   practiceGradingPrompt,
   practicePromptGenerationPrompt,
@@ -187,15 +188,25 @@ export default function PracticeSessionPage({
       // Resolve genre labels for prompt generation
       const genreLabels = session.genres.map((id) => GENRES.find((g) => g.id === id)?.label || id);
 
+      // Resolve focus area labels if stored on session
+      const focusLabels = session.focusAreas
+        ?.map((id) => FOCUS_AREA_CATEGORIES.find((c) => c.id === id)?.label)
+        .filter(Boolean) as string[] | undefined;
+
       if (hasKey()) {
-        const { systemPrompt, userMessage } = practicePromptGenerationPrompt(genreLabels);
+        const { systemPrompt, userMessage } = practicePromptGenerationPrompt(genreLabels, {
+          focusAreas: focusLabels?.length ? focusLabels : undefined,
+        });
         const newPrompt = await sendRequest(systemPrompt, userMessage);
         await updatePracticeSession(sessionId, { prompt: newPrompt });
         toast("Prompt regenerated!", "success");
       } else {
         const hasGenres = genreLabels.length > 0;
         const genreText = hasGenres ? `${genreLabels.join("/")} ` : "";
-        const newPrompt = `Write a short ${genreText}piece. Focus on vivid sensory detail and a compelling opening line. Your piece should have a clear beginning, middle, and end.`;
+        const focusPart = focusLabels?.length
+          ? ` Focus especially on ${focusLabels.join(" and ")}.`
+          : "";
+        const newPrompt = `Write a short ${genreText}piece. Focus on vivid sensory detail and a compelling opening line.${focusPart} Your piece should have a clear beginning, middle, and end.`;
         await updatePracticeSession(sessionId, { prompt: newPrompt });
         toast("Prompt regenerated!", "success");
       }
@@ -608,6 +619,17 @@ export default function PracticeSessionPage({
                 {g}
               </Badge>
             ))}
+            {session.focusAreas &&
+              session.focusAreas.length > 0 &&
+              session.focusAreas.map((id) => {
+                const cat = FOCUS_AREA_CATEGORIES.find((c) => c.id === id);
+                return cat ? (
+                  <Badge key={id} variant="accent" className="text-[10px]">
+                    <Target size={8} className="shrink-0" />
+                    {cat.label}
+                  </Badge>
+                ) : null;
+              })}
           </div>
         </Card>
 

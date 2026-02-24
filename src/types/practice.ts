@@ -9,6 +9,7 @@ export interface PracticeFeedback {
 export interface PracticeSession {
   id: string;
   genres: string[];
+  focusAreas?: string[];
   prompt: string;
   response: string;
   responseHtml: string;
