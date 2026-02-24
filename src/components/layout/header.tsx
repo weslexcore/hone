@@ -1,11 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Menu } from "lucide-react";
+import { ChevronRight, Menu, Search } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useProject, useChapter, useScene } from "@/lib/db/hooks";
 import { useSidebar } from "@/providers/sidebar-provider";
+import { GlobalSearch } from "@/components/search/global-search";
 
 /**
  * Build breadcrumbs from the URL. For project routes we resolve actual
@@ -73,36 +75,64 @@ function useBreadcrumbs() {
 export function Header() {
   const crumbs = useBreadcrumbs();
   const { setMobileOpen } = useSidebar();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global keyboard shortcut: Cmd/Ctrl+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   return (
-    <header className="flex h-14 items-center border-b border-border px-4 md:px-6">
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="mr-3 p-1 text-text-muted hover:text-text-primary transition-colors md:hidden"
-      >
-        <Menu size={20} />
-      </button>
-      <nav className="flex items-center gap-1 text-sm min-w-0">
-        {crumbs.map((crumb, i) => (
-          <span key={crumb.href} className="flex items-center gap-1 min-w-0">
-            {i > 0 && <ChevronRight size={14} className="text-text-muted shrink-0" />}
-            {i === crumbs.length - 1 ? (
-              <span className="text-text-primary font-medium truncate max-w-[120px] md:max-w-[200px]">
-                {crumb.label}
-              </span>
-            ) : (
-              <Link
-                href={crumb.href}
-                className={cn(
-                  "text-text-muted hover:text-text-secondary transition-colors truncate max-w-[120px] md:max-w-[200px]",
-                )}
-              >
-                {crumb.label}
-              </Link>
-            )}
-          </span>
-        ))}
-      </nav>
-    </header>
+    <>
+      <header className="flex h-14 items-center border-b border-border px-4 md:px-6">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="mr-3 p-1 text-text-muted hover:text-text-primary transition-colors md:hidden"
+        >
+          <Menu size={20} />
+        </button>
+        <nav className="flex items-center gap-1 text-sm min-w-0">
+          {crumbs.map((crumb, i) => (
+            <span key={crumb.href} className="flex items-center gap-1 min-w-0">
+              {i > 0 && <ChevronRight size={14} className="text-text-muted shrink-0" />}
+              {i === crumbs.length - 1 ? (
+                <span className="text-text-primary font-medium truncate max-w-[120px] md:max-w-[200px]">
+                  {crumb.label}
+                </span>
+              ) : (
+                <Link
+                  href={crumb.href}
+                  className={cn(
+                    "text-text-muted hover:text-text-secondary transition-colors truncate max-w-[120px] md:max-w-[200px]",
+                  )}
+                >
+                  {crumb.label}
+                </Link>
+              )}
+            </span>
+          ))}
+        </nav>
+
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="ml-auto flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-muted hover:text-text-secondary hover:border-border-subtle transition-colors"
+        >
+          <Search size={14} />
+          <span className="hidden sm:inline">Search</span>
+          <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-surface-overlay px-1.5 text-[10px] font-medium">
+            &#8984;K
+          </kbd>
+        </button>
+      </header>
+
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+    </>
   );
 }
