@@ -24,6 +24,7 @@ import {
   setProviderModel,
 } from '@/lib/storage/api-keys';
 import { ANTHROPIC_MODELS, OPENAI_MODELS, type ModelOption } from '@/lib/constants/models';
+import { fetchOllamaModelsDirect } from '@/lib/ai/client';
 import { THEMES, type ThemeId } from '@/lib/storage/theme';
 import { Eye, EyeOff, Trash2, Key, Palette, Check, Server, RefreshCw, Loader2, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -288,23 +289,40 @@ function OllamaSection() {
     setLoadingModels(true);
     try {
       const effectiveUrl = useCloud ? 'https://ollama.com' : (url.trim() || 'http://localhost:11434');
-      const body: Record<string, string | undefined> = { baseUrl: effectiveUrl };
-      if (useCloud && cloudKey.trim()) {
-        body.ollamaApiKey = cloudKey.trim();
+      const isLocal = !useCloud && (() => {
+        try {
+          const host = new URL(effectiveUrl).hostname.toLowerCase();
+          return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1' || host.endsWith('.local');
+        } catch { return false; }
+      })();
+
+      let models: string[] = [];
+
+      if (isLocal) {
+        // Call Ollama directly from the browser (works even when app is deployed)
+        models = await fetchOllamaModelsDirect(effectiveUrl);
+      } else {
+        // Use server proxy for remote/cloud Ollama
+        const body: Record<string, string | undefined> = { baseUrl: effectiveUrl };
+        if (useCloud && cloudKey.trim()) {
+          body.ollamaApiKey = cloudKey.trim();
+        }
+        const res = await fetch('/api/ai/ollama/models', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Failed to fetch' }));
+          toast(err.error || 'Failed to fetch models', 'error');
+          return;
+        }
+        const data = await res.json();
+        models = data.models || [];
       }
-      const res = await fetch('/api/ai/ollama/models', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed to fetch' }));
-        toast(err.error || 'Failed to fetch models', 'error');
-        return;
-      }
-      const data = await res.json();
-      setAvailableModels(data.models || []);
-      if (data.models?.length > 0) {
+
+      setAvailableModels(models);
+      if (models.length > 0) {
         setModelDropdownOpen(true);
       } else {
         toast('No models found', 'info');
@@ -495,8 +513,46 @@ function OllamaSection() {
       <p className="text-xs text-text-muted">
         {useCloud
           ? 'Run models in the cloud via Ollama. Requires an ollama.com account and API key.'
-          : 'Run models locally with Ollama. Make sure the Ollama server is running before using AI features.'}
+          : 'Run models locally with Ollama. Calls go directly from your browser to Ollama, so it works even when this app is deployed online.'}
       </p>
+      {!useCloud && (
+        <details className="mt-2 text-[10px] text-text-muted/70">
+          <summary className="cursor-pointer hover:text-text-muted transition-colors">
+            Setup instructions &amp; CORS configuration
+          </summary>
+          <div className="mt-1.5 space-y-1.5 pl-2 border-l border-border/50">
+            <p>
+              When Hone is hosted on the web, your browser connects to your local Ollama directly.
+              Ollama must allow requests from this domain by setting <code className="text-accent/70">OLLAMA_ORIGINS</code>.
+            </p>
+            <p className="font-medium text-text-muted">macOS (permanent via launchctl):</p>
+            <pre className="bg-surface-overlay rounded px-2 py-1.5 overflow-x-auto text-[10px] leading-relaxed">
+              <code>{`launchctl setenv OLLAMA_ORIGINS "*"`}</code>
+            </pre>
+            <p className="text-text-muted/50">Then restart Ollama from the menu bar.</p>
+
+            <p className="font-medium text-text-muted">Linux (permanent via systemd):</p>
+            <pre className="bg-surface-overlay rounded px-2 py-1.5 overflow-x-auto text-[10px] leading-relaxed">
+              <code>{`sudo systemctl edit ollama.service`}</code>
+            </pre>
+            <p className="text-text-muted/50">Add under <code>[Service]</code>:</p>
+            <pre className="bg-surface-overlay rounded px-2 py-1.5 overflow-x-auto text-[10px] leading-relaxed">
+              <code>{`[Service]\nEnvironment="OLLAMA_ORIGINS=*"`}</code>
+            </pre>
+            <p className="text-text-muted/50">Then run <code>sudo systemctl daemon-reload && sudo systemctl restart ollama</code></p>
+
+            <p className="font-medium text-text-muted">Windows:</p>
+            <p className="text-text-muted/50">
+              Open System Environment Variables, add <code className="text-accent/70">OLLAMA_ORIGINS</code> with value <code className="text-accent/70">*</code>, then restart Ollama.
+            </p>
+
+            <p className="font-medium text-text-muted">Quick test (temporary):</p>
+            <pre className="bg-surface-overlay rounded px-2 py-1.5 overflow-x-auto text-[10px] leading-relaxed">
+              <code>{`OLLAMA_ORIGINS=* ollama serve`}</code>
+            </pre>
+          </div>
+        </details>
+      )}
     </Card>
   );
 }
