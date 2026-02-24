@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,17 @@ import {
 import { ANTHROPIC_MODELS, OPENAI_MODELS, type ModelOption } from "@/lib/constants/models";
 import { fetchOllamaModelsDirect } from "@/lib/ai/client";
 import { THEMES, type ThemeId } from "@/lib/storage/theme";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
+import {
+  exportAllData,
+  downloadJsonFile,
+  readFileAsJson,
+  validateExportData,
+  importDataReplace,
+  importDataMerge,
+  type HoneExportData,
+} from "@/lib/db/export-import";
+import { format } from "date-fns";
 import {
   Eye,
   EyeOff,
@@ -37,6 +48,9 @@ import {
   RefreshCw,
   Loader2,
   ChevronDown,
+  HardDrive,
+  Download,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -587,6 +601,188 @@ function OllamaSection() {
   );
 }
 
+function DataManagementSection() {
+  const { toast } = useToast();
+  const [includeSettings, setIncludeSettings] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [pendingData, setPendingData] = useState<HoneExportData | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const json = await exportAllData(includeSettings);
+      const filename = `hone-export-${format(new Date(), "yyyy-MM-dd")}.hone.json`;
+      downloadJsonFile(json, filename);
+      toast("Data exported successfully", "success");
+    } catch {
+      toast("Failed to export data", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    try {
+      const raw = await readFileAsJson(file);
+      const result = validateExportData(raw);
+      if (!result.valid || !result.data) {
+        toast(result.error || "Invalid file", "error");
+        return;
+      }
+      setPendingData(result.data);
+      setImportDialogOpen(true);
+    } catch {
+      toast("Failed to read file", "error");
+    }
+  };
+
+  const handleReplace = async () => {
+    if (!pendingData) return;
+    setImporting(true);
+    try {
+      const r = await importDataReplace(pendingData);
+      toast(`Replaced all data: ${r.projects} projects, ${r.scenes} scenes, ${r.practiceSessions} practice sessions`, "success");
+      setImportDialogOpen(false);
+      setPendingData(null);
+    } catch {
+      toast("Import failed", "error");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleMerge = async () => {
+    if (!pendingData) return;
+    setImporting(true);
+    try {
+      const r = await importDataMerge(pendingData);
+      const added = r.projects + r.chapters + r.scenes + r.practiceSessions + r.suggestionBatches;
+      toast(added > 0 ? `Merged: ${r.projects} projects, ${r.scenes} scenes, ${r.practiceSessions} practice sessions added` : "No new data to merge", "success");
+      setImportDialogOpen(false);
+      setPendingData(null);
+    } catch {
+      toast("Import failed", "error");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <>
+      <section className="mb-8">
+        <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-4">
+          <span className="flex items-center gap-2">
+            <HardDrive size={14} />
+            Data Management
+          </span>
+        </h2>
+
+        <Card className="space-y-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Download size={16} className="text-accent" />
+            <h3 className="text-sm font-medium text-text-primary">Export Data</h3>
+          </div>
+          <p className="text-xs text-text-muted">
+            Download all your projects, chapters, scenes, practice sessions, and AI suggestions as a
+            single file. Use this to back up your data or move it to another Hone instance.
+          </p>
+          <div className="flex items-center gap-2">
+            <Switch checked={includeSettings} onChange={setIncludeSettings} />
+            <span className="text-xs text-text-secondary">
+              Include settings (theme, model preferences)
+            </span>
+          </div>
+          <Button variant="primary" size="sm" onClick={handleExport} disabled={exporting}>
+            {exporting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Exporting&hellip;
+              </>
+            ) : (
+              "Export All Data"
+            )}
+          </Button>
+        </Card>
+
+        <Card className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Upload size={16} className="text-accent" />
+            <h3 className="text-sm font-medium text-text-primary">Import Data</h3>
+          </div>
+          <p className="text-xs text-text-muted">
+            Restore data from a previously exported <code className="text-accent/70">.hone.json</code>{" "}
+            file.
+          </p>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".json"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+            Choose File
+          </Button>
+        </Card>
+      </section>
+
+      <Dialog open={importDialogOpen} onClose={() => { setImportDialogOpen(false); setPendingData(null); }}>
+        <DialogTitle>Import Data</DialogTitle>
+        {pendingData && (
+          <>
+            <p className="text-sm text-text-secondary mb-3">This file contains:</p>
+            <ul className="text-sm text-text-primary space-y-1 mb-4">
+              <li>{pendingData.data.projects.length} projects</li>
+              <li>{pendingData.data.chapters.length} chapters</li>
+              <li>{pendingData.data.scenes.length} scenes</li>
+              <li>{pendingData.data.practiceSessions.length} practice sessions</li>
+              <li>{pendingData.data.suggestionBatches.length} suggestion batches</li>
+            </ul>
+            {pendingData.settings && (
+              <p className="text-xs text-text-muted mb-4">
+                Also includes settings (theme, model preferences).
+              </p>
+            )}
+            <div className="space-y-2 text-xs text-text-muted mb-5">
+              <p>
+                <strong className="text-text-secondary">Replace</strong> removes all existing data and
+                replaces it with the imported data.
+              </p>
+              <p>
+                <strong className="text-text-secondary">Merge</strong> keeps your existing data and
+                adds only new items from the file.
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setImportDialogOpen(false); setPendingData(null); }}
+                disabled={importing}
+              >
+                Cancel
+              </Button>
+              <Button variant="danger" size="sm" onClick={handleReplace} disabled={importing}>
+                {importing ? <Loader2 size={14} className="animate-spin" /> : "Replace All"}
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleMerge} disabled={importing}>
+                {importing ? <Loader2 size={14} className="animate-spin" /> : "Merge"}
+              </Button>
+            </div>
+          </>
+        )}
+      </Dialog>
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const { config, setProvider, setEnabledGlobally } = useAI();
   const { theme, setTheme } = useTheme();
@@ -701,6 +897,9 @@ export default function SettingsPage() {
             )}
           </div>
         </section>
+
+        {/* Data Management */}
+        <DataManagementSection />
 
         {/* Info */}
         <section>
