@@ -1,5 +1,5 @@
-export function writingSuggestionsPrompt(sceneContent: string, projectContext?: string) {
-  const systemPrompt = `You are an expert writing coach and editor. Analyze the provided text and return suggestions in JSON format.
+export function writingSuggestionsPrompt(sceneContent: string, projectContext?: string, existingSuggestions?: string[]) {
+  let systemPrompt = `You are an expert writing coach and editor. Analyze the provided text and return suggestions in JSON format.
 
 Return a JSON array of suggestion objects with these fields:
 - type: one of "style", "grammar", "pacing", "dialogue", "general"
@@ -12,6 +12,10 @@ Return a JSON array of suggestion objects with these fields:
 Focus on actionable, specific improvements. Limit to 5-8 suggestions. Prioritize the most impactful changes.
 Return ONLY the JSON array, no other text.`;
 
+  if (existingSuggestions && existingSuggestions.length > 0) {
+    systemPrompt += `\n\nIMPORTANT: The following suggestions have already been given to the writer. Do NOT repeat these or make suggestions along the same lines. Focus on NEW, DIFFERENT aspects of the writing:\n${existingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+  }
+
   let userMessage = `Please analyze this writing:\n\n${sceneContent}`;
   if (projectContext) {
     userMessage += `\n\nFor context, here is other content from the same project:\n\n${projectContext}`;
@@ -20,8 +24,8 @@ Return ONLY the JSON array, no other text.`;
   return { systemPrompt, userMessage };
 }
 
-export function consistencyCheckPrompt(allScenesContent: string) {
-  const systemPrompt = `You are a continuity editor. Analyze the provided manuscript content for consistency issues.
+export function consistencyCheckPrompt(allScenesContent: string, existingSuggestions?: string[]) {
+  let systemPrompt = `You are a continuity editor. Analyze the provided manuscript content for consistency issues.
 
 Check for:
 - Character name spelling variations
@@ -38,6 +42,10 @@ Return a JSON array of issue objects with these fields:
 - confidence: 0-1 rating
 
 Focus on actual contradictions, not stylistic preferences. Return ONLY the JSON array.`;
+
+  if (existingSuggestions && existingSuggestions.length > 0) {
+    systemPrompt += `\n\nIMPORTANT: The following issues have already been identified. Do NOT repeat these or flag the same issues again. Focus on NEW, DIFFERENT consistency problems:\n${existingSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+  }
 
   const userMessage = `Please check this manuscript for consistency issues:\n\n${allScenesContent}`;
 

@@ -10,7 +10,7 @@ import { Dialog, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useAI } from '@/providers/ai-provider';
 import { usePracticeSession, updatePracticeSession, deletePracticeSession } from '@/lib/db/hooks';
-import { GENRES } from '@/lib/constants/genres';
+import { GENRES, PRACTICE_DURATIONS } from '@/lib/constants/genres';
 import { practiceGradingPrompt, formatPromptForCopy } from '@/lib/ai/prompts';
 import { stripCodeFences } from '@/lib/ai/client';
 import { useTimer } from '@/hooks/use-timer';
@@ -33,6 +33,9 @@ import {
   Minimize2,
   Eye,
   EyeOff,
+  Timer,
+  Plus,
+  Infinity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { PasteAIResponse } from '@/components/ai/paste-ai-response';
@@ -43,6 +46,12 @@ function formatSeconds(seconds: number) {
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
+const EXTEND_OPTIONS = [
+  { seconds: 300, label: '+5 min' },
+  { seconds: 600, label: '+10 min' },
+  { seconds: 900, label: '+15 min' },
+];
 
 export default function PracticeSessionPage({
   params,
@@ -59,8 +68,11 @@ export default function PracticeSessionPage({
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPrompt, setShowPrompt] = useState(true);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
   const hasStartedWriting = useRef(false);
   const timerAutoStarted = useRef(false);
+
+  const isUntimed = session?.durationSeconds === 0;
 
   // Escape exits fullscreen, Cmd+Shift+F toggles fullscreen
   useEffect(() => {
@@ -80,24 +92,9 @@ export default function PracticeSessionPage({
   const contentRef = useRef({ json: '', html: '', wordCount: 0 });
 
   const handleTimerComplete = useCallback(async () => {
-    if (!session) return;
-    // If the user never wrote anything, delete the session instead of saving
-    if (!hasStartedWriting.current || contentRef.current.wordCount === 0) {
-      await deletePracticeSession(sessionId);
-      toast('Session ended with no content — discarded.', 'info');
-      router.push('/practice');
-      return;
-    }
-    await updatePracticeSession(sessionId, {
-      status: 'submitted',
-      response: contentRef.current.json,
-      responseHtml: contentRef.current.html,
-      wordCount: contentRef.current.wordCount,
-      actualSeconds: session.durationSeconds,
-      completedAt: new Date(),
-    });
-    toast('Time is up! Writing submitted.', 'info');
-  }, [session, sessionId, toast, router]);
+    // Don't auto-submit — let the user extend or submit manually
+    toast('Time is up! You can extend or submit your writing.', 'info');
+  }, [toast]);
 
   const timer = useTimer({
     durationSeconds: session?.durationSeconds ?? 600,
@@ -110,7 +107,7 @@ export default function PracticeSessionPage({
       if (wordCount > 0) {
         hasStartedWriting.current = true;
       }
-      // Auto-start timer on first keystroke
+      // Auto-start timer on first keystroke (both timed and untimed modes)
       if (!timerAutoStarted.current && !timer.isRunning && (json.length > 20 || wordCount > 0)) {
         timerAutoStarted.current = true;
         timer.start();
@@ -119,7 +116,7 @@ export default function PracticeSessionPage({
     [timer]
   );
 
-  const handleSubmitEarly = useCallback(async () => {
+  const handleSubmit = useCallback(async () => {
     if (!session) return;
     // If no content, discard
     if (!hasStartedWriting.current || contentRef.current.wordCount === 0) {
@@ -140,6 +137,33 @@ export default function PracticeSessionPage({
     timer.pause();
     toast('Writing submitted!', 'success');
   }, [session, sessionId, timer, toast, router]);
+
+  const handleExtend = useCallback(async (seconds: number) => {
+    timer.extend(seconds);
+    // Update session durationSeconds to reflect the extension
+    if (session) {
+      await updatePracticeSession(sessionId, {
+        durationSeconds: session.durationSeconds + seconds,
+      });
+    }
+    toast(`Added ${Math.round(seconds / 60)} minutes`, 'success');
+  }, [timer, session, sessionId, toast]);
+
+  const handleRemoveLimit = useCallback(async () => {
+    timer.removeLimit();
+    if (session) {
+      await updatePracticeSession(sessionId, { durationSeconds: 0 });
+    }
+    toast('Timer removed — write as long as you want', 'success');
+  }, [timer, session, sessionId, toast]);
+
+  const handleDurationChange = useCallback(async (newDuration: number) => {
+    timer.setDuration(newDuration);
+    if (session) {
+      await updatePracticeSession(sessionId, { durationSeconds: newDuration });
+    }
+    setShowDurationPicker(false);
+  }, [timer, session, sessionId]);
 
   const handleDiscard = useCallback(async () => {
     timer.pause();
@@ -256,11 +280,37 @@ export default function PracticeSessionPage({
         <div className="border-b border-border px-6 py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-lg font-mono font-semibold text-text-primary">
-                <Clock size={18} className={timer.isRunning ? 'text-accent' : 'text-text-muted'} />
-                {formatSeconds(timer.remaining)}
-              </div>
-              {!isFullscreen && (
+              {/* Timer display */}
+              {isUntimed ? (
+                <div className="flex items-center gap-1.5 text-lg font-mono font-semibold text-text-primary">
+                  <Timer size={18} className={timer.isRunning ? 'text-accent' : 'text-text-muted'} />
+                  {formatSeconds(timer.elapsed)}
+                  <span className="text-xs font-normal text-text-muted ml-1">elapsed</span>
+                </div>
+              ) : timer.isComplete ? (
+                <div className="flex items-center gap-1.5 text-lg font-mono font-semibold text-accent">
+                  <Clock size={18} className="text-accent" />
+                  0:00
+                  <span className="text-xs font-normal text-accent/70 ml-1">time&apos;s up</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 text-lg font-mono font-semibold text-text-primary">
+                    <Clock size={18} className={timer.isRunning ? 'text-accent' : 'text-text-muted'} />
+                    {formatSeconds(timer.remaining)}
+                  </div>
+                  {/* Duration picker toggle (only before timer starts) */}
+                  {!timer.isRunning && !timerAutoStarted.current && (
+                    <button
+                      onClick={() => setShowDurationPicker(!showDurationPicker)}
+                      className="text-[10px] text-text-muted hover:text-accent transition-colors ml-1"
+                    >
+                      adjust
+                    </button>
+                  )}
+                </div>
+              )}
+              {!isFullscreen && genreLabels.length > 0 && (
                 <div className="flex gap-1.5">
                   {genreLabels.map((g) => (
                     <Badge key={g} variant="muted" className="text-[10px]">
@@ -285,7 +335,36 @@ export default function PracticeSessionPage({
               >
                 {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
               </button>
-              {!timer.isRunning ? (
+              {timer.isComplete ? (
+                <>
+                  {/* Timer expired: show extend options + submit */}
+                  {EXTEND_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt.seconds}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleExtend(opt.seconds)}
+                      className="text-xs"
+                    >
+                      <Plus size={12} />
+                      {opt.label}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveLimit}
+                    className="text-xs"
+                  >
+                    <Infinity size={14} />
+                    {!isFullscreen && 'No limit'}
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={handleSubmit}>
+                    <Send size={14} />
+                    {!isFullscreen && 'Submit'}
+                  </Button>
+                </>
+              ) : !timer.isRunning && !timerAutoStarted.current ? (
                 <>
                   <Button variant="primary" size="sm" onClick={() => {
                     timerAutoStarted.current = true;
@@ -308,9 +387,9 @@ export default function PracticeSessionPage({
                 </>
               ) : (
                 <>
-                  <Button variant="secondary" size="sm" onClick={handleSubmitEarly}>
+                  <Button variant="secondary" size="sm" onClick={handleSubmit}>
                     <Send size={14} />
-                    {!isFullscreen && 'Submit Early'}
+                    {!isFullscreen && (isUntimed ? 'Submit' : 'Submit Early')}
                   </Button>
                   <Button
                     variant="ghost"
@@ -325,15 +404,55 @@ export default function PracticeSessionPage({
               )}
             </div>
           </div>
-          {/* Progress bar */}
-          <div className="h-1 rounded-full bg-surface-overlay overflow-hidden">
-            <motion.div
-              className="h-full bg-accent rounded-full"
-              style={{ width: `${timer.progress * 100}%` }}
-              transition={{ duration: 0.1 }}
-            />
-          </div>
-          {!timer.isRunning && (
+
+          {/* Progress bar (only for timed mode, not when complete) */}
+          {!isUntimed && !timer.isComplete && (
+            <div className="h-1 rounded-full bg-surface-overlay overflow-hidden">
+              <motion.div
+                className="h-full bg-accent rounded-full"
+                style={{ width: `${timer.progress * 100}%` }}
+                transition={{ duration: 0.1 }}
+              />
+            </div>
+          )}
+
+          {/* Timer expired banner */}
+          {timer.isComplete && (
+            <div className="h-1 rounded-full bg-accent overflow-hidden" />
+          )}
+
+          {/* Duration picker (shown before timer starts) */}
+          {showDurationPicker && !timer.isRunning && !timerAutoStarted.current && (
+            <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/50">
+              {PRACTICE_DURATIONS.map((d) => (
+                <button
+                  key={d.value}
+                  onClick={() => handleDurationChange(d.value)}
+                  className={cn(
+                    'rounded border px-2.5 py-1 text-xs font-medium transition-colors',
+                    session.durationSeconds === d.value
+                      ? 'border-accent bg-accent-muted text-accent'
+                      : 'border-border text-text-secondary hover:bg-surface-hover'
+                  )}
+                >
+                  {d.label}
+                </button>
+              ))}
+              <button
+                onClick={() => handleDurationChange(0)}
+                className={cn(
+                  'rounded border px-2.5 py-1 text-xs font-medium transition-colors',
+                  session.durationSeconds === 0
+                    ? 'border-accent bg-accent-muted text-accent'
+                    : 'border-border text-text-secondary hover:bg-surface-hover'
+                )}
+              >
+                No limit
+              </button>
+            </div>
+          )}
+
+          {!timer.isRunning && !timerAutoStarted.current && !timer.isComplete && (
             <p className="text-[10px] text-text-muted mt-1.5 text-center">
               Timer starts automatically when you begin typing
             </p>
@@ -413,7 +532,7 @@ export default function PracticeSessionPage({
           </p>
           <div className="flex items-center gap-3 mt-3 text-xs text-text-muted">
             <span>{session.wordCount} words</span>
-            <span>{Math.round(session.actualSeconds / 60)} min</span>
+            <span>{session.durationSeconds === 0 ? 'Untimed' : `${Math.round(session.actualSeconds / 60)} min`}</span>
             {genreLabels.map((g) => (
               <Badge key={g} variant="muted" className="text-[10px]">
                 {g}

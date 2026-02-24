@@ -97,12 +97,27 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
     [targetId, targetType, projectId]
   );
 
+  // Collect existing non-dismissed suggestion summaries for deduplication
+  const getExistingSuggestionSummaries = useCallback((analysisType: 'suggestions' | 'consistency') => {
+    const batches = (savedBatches || []).filter((b) => b.analysisType === analysisType);
+    const summaries: string[] = [];
+    for (const batch of batches) {
+      for (const s of batch.suggestions) {
+        if (!batch.dismissedIds.includes(s.id)) {
+          summaries.push(`${s.title}: ${s.description}`);
+        }
+      }
+    }
+    return summaries;
+  }, [savedBatches]);
+
   const handleAnalyze = useCallback(async () => {
     const text = getSceneText();
     if (!text.trim()) return;
 
     setParseError(null);
-    const { systemPrompt, userMessage } = writingSuggestionsPrompt(text);
+    const existing = getExistingSuggestionSummaries('suggestions');
+    const { systemPrompt, userMessage } = writingSuggestionsPrompt(text, undefined, existing);
 
     try {
       const result = await sendRequest(systemPrompt, userMessage);
@@ -119,7 +134,7 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
         setParseError('Failed to parse AI response. Try again.');
       }
     }
-  }, [getSceneText, sendRequest, saveBatch]);
+  }, [getSceneText, sendRequest, saveBatch, getExistingSuggestionSummaries]);
 
   const handleConsistencyCheck = useCallback(async () => {
     const allScenes = await db.scenes.where('projectId').equals(projectId).toArray();
@@ -136,7 +151,8 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
     if (!allText.trim()) return;
 
     setParseError(null);
-    const { systemPrompt, userMessage } = consistencyCheckPrompt(allText);
+    const existing = getExistingSuggestionSummaries('consistency');
+    const { systemPrompt, userMessage } = consistencyCheckPrompt(allText, existing);
 
     try {
       const result = await sendRequest(systemPrompt, userMessage);
@@ -153,7 +169,7 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
         setParseError('Failed to parse AI response. Try again.');
       }
     }
-  }, [projectId, sendRequest, saveBatch]);
+  }, [projectId, sendRequest, saveBatch, getExistingSuggestionSummaries]);
 
   const handleDismissSuggestion = useCallback(
     async (batchId: string, suggestionId: string) => {
@@ -173,10 +189,11 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
     const text = getSceneText();
     if (!text.trim()) return;
 
+    const existing = getExistingSuggestionSummaries(activeTab);
     const promptData =
       activeTab === 'suggestions'
-        ? writingSuggestionsPrompt(text)
-        : consistencyCheckPrompt(text);
+        ? writingSuggestionsPrompt(text, undefined, existing)
+        : consistencyCheckPrompt(text, existing);
 
     const formatted = formatPromptForCopy(
       activeTab === 'suggestions' ? 'suggestion' : 'consistency',
@@ -187,7 +204,7 @@ export function AIPanel({ sceneId, chapterId, projectId, getText, onClose }: AIP
     await navigator.clipboard.writeText(formatted);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [activeTab, getSceneText]);
+  }, [activeTab, getSceneText, getExistingSuggestionSummaries]);
 
   const handlePastedResponse = useCallback(
     async (data: unknown) => {

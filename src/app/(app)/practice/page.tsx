@@ -37,7 +37,7 @@ export default function PracticePage() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [customGenreInput, setCustomGenreInput] = useState('');
   const [customGenres, setCustomGenres] = useState<string[]>([]);
-  const [selectedDuration, setSelectedDuration] = useState(600);
+  const [selectedDuration, setSelectedDuration] = useState(0);
   const [customMinutes, setCustomMinutes] = useState('');
   const [copied, setCopied] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
@@ -219,6 +219,20 @@ export default function PracticePage() {
                 Duration
               </label>
               <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedDuration(0);
+                    setCustomMinutes('');
+                  }}
+                  className={cn(
+                    'rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                    selectedDuration === 0 && !customMinutes
+                      ? 'border-accent bg-accent-muted text-accent'
+                      : 'border-border text-text-secondary hover:bg-surface-hover'
+                  )}
+                >
+                  No limit
+                </button>
                 {PRACTICE_DURATIONS.map((d) => (
                   <button
                     key={d.value}
@@ -236,20 +250,6 @@ export default function PracticePage() {
                     {d.label}
                   </button>
                 ))}
-                <button
-                  onClick={() => {
-                    setSelectedDuration(0);
-                    setCustomMinutes('');
-                  }}
-                  className={cn(
-                    'rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
-                    selectedDuration === 0 && !customMinutes
-                      ? 'border-accent bg-accent-muted text-accent'
-                      : 'border-border text-text-secondary hover:bg-surface-hover'
-                  )}
-                >
-                  No limit
-                </button>
                 <div className="flex items-center gap-1.5">
                   <Input
                     type="number"
