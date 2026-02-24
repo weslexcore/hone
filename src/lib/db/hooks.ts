@@ -1,7 +1,9 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "./index";
 import type { Project, Chapter, Scene } from "@/types/project";
-import type { PracticeSession } from "@/types/practice";
+import type { PracticeSession, PracticeRound, PracticeFeedback } from "@/types/practice";
+import type { AISuggestion, SavedSuggestionBatch } from "@/types/ai";
+import { GENRES } from "@/lib/constants/genres";
 import { nanoid } from "nanoid";
 
 // --- Projects ---
@@ -224,4 +226,196 @@ export async function updatePracticeSession(id: string, data: Partial<PracticeSe
 
 export async function deletePracticeSession(id: string) {
   await db.practiceSessions.delete(id);
+}
+
+// --- Practice Round Management ---
+
+export async function startNewRound(sessionId: string, durationSeconds: number): Promise<void> {
+  const session = await db.practiceSessions.get(sessionId);
+  if (!session) throw new Error("Session not found");
+
+  const rounds: PracticeRound[] = session.rounds ? [...session.rounds] : [];
+
+  // Migrate existing data into round 1 if this is the first time adding rounds
+  if (rounds.length === 0 && (session.status === "graded" || session.status === "submitted")) {
+    rounds.push({
+      roundNumber: 1,
+      response: session.response,
+      responseHtml: session.responseHtml,
+      wordCount: session.wordCount,
+      durationSeconds: session.durationSeconds,
+      actualSeconds: session.actualSeconds,
+      score: session.score,
+      feedback: session.feedback,
+      status: session.status,
+      startedAt: session.createdAt,
+      completedAt: session.completedAt,
+    });
+  }
+
+  const latestRound = rounds[rounds.length - 1];
+
+  const newRound: PracticeRound = {
+    roundNumber: rounds.length + 1,
+    response: latestRound?.response ?? session.response,
+    responseHtml: latestRound?.responseHtml ?? session.responseHtml,
+    wordCount: latestRound?.wordCount ?? session.wordCount,
+    durationSeconds,
+    actualSeconds: 0,
+    score: null,
+    feedback: null,
+    status: "in_progress",
+    startedAt: new Date(),
+    completedAt: null,
+  };
+
+  rounds.push(newRound);
+
+  await db.practiceSessions.update(sessionId, {
+    rounds,
+    currentRound: rounds.length - 1,
+    status: "in_progress",
+    durationSeconds,
+  });
+}
+
+export async function submitCurrentRound(
+  sessionId: string,
+  data: { response: string; responseHtml: string; wordCount: number; actualSeconds: number },
+): Promise<void> {
+  const session = await db.practiceSessions.get(sessionId);
+  if (!session?.rounds) {
+    // Legacy: no rounds, fall back to direct update
+    await db.practiceSessions.update(sessionId, {
+      ...data,
+      status: "submitted",
+      completedAt: new Date(),
+    });
+    return;
+  }
+
+  const idx = session.currentRound ?? session.rounds.length - 1;
+  const rounds = [...session.rounds];
+  rounds[idx] = {
+    ...rounds[idx],
+    ...data,
+    status: "submitted",
+    completedAt: new Date(),
+  };
+
+  await db.practiceSessions.update(sessionId, {
+    rounds,
+    status: "submitted",
+    response: data.response,
+    responseHtml: data.responseHtml,
+    wordCount: data.wordCount,
+    actualSeconds: data.actualSeconds,
+    completedAt: new Date(),
+  });
+}
+
+export async function gradeCurrentRound(
+  sessionId: string,
+  feedback: PracticeFeedback,
+): Promise<void> {
+  const session = await db.practiceSessions.get(sessionId);
+  if (!session?.rounds) {
+    // Legacy: no rounds
+    await db.practiceSessions.update(sessionId, {
+      status: "graded",
+      score: feedback.overallScore,
+      feedback,
+    });
+    return;
+  }
+
+  const idx = session.currentRound ?? session.rounds.length - 1;
+  const rounds = [...session.rounds];
+  rounds[idx] = {
+    ...rounds[idx],
+    score: feedback.overallScore,
+    feedback,
+    status: "graded",
+  };
+
+  await db.practiceSessions.update(sessionId, {
+    rounds,
+    status: "graded",
+    score: feedback.overallScore,
+    feedback,
+  });
+}
+
+// --- Convert Practice Session to Project ---
+
+export async function convertSessionToProject(sessionId: string): Promise<string> {
+  const session = await db.practiceSessions.get(sessionId);
+  if (!session) throw new Error("Session not found");
+
+  // Use latest round content, or session's own content for legacy
+  const latestRound = session.rounds?.[session.rounds.length - 1];
+  const content = latestRound?.response ?? session.response;
+  const contentHtml = latestRound?.responseHtml ?? session.responseHtml;
+  const wordCount = latestRound?.wordCount ?? session.wordCount;
+
+  const genreLabels = session.genres.map((id) => GENRES.find((g) => g.id === id)?.label || id);
+
+  const promptExcerpt =
+    session.prompt.length > 60 ? session.prompt.substring(0, 57) + "..." : session.prompt;
+
+  const projectId = await createProject({
+    title: promptExcerpt,
+    description: session.prompt,
+    tags: genreLabels,
+  });
+
+  const chapterId = await createChapter(projectId, {
+    title: "Practice Writing",
+  });
+
+  const sceneId = await createScene(chapterId, projectId, {
+    title: "Draft",
+    content,
+    contentHtml,
+    wordCount,
+  });
+
+  await propagateWordCount(sceneId);
+
+  // Convert feedback into suggestion batch
+  const feedback = latestRound?.feedback ?? session.feedback;
+  if (feedback) {
+    const suggestions: AISuggestion[] = [
+      ...feedback.improvements.map((imp, i) => ({
+        id: `imp-${nanoid(6)}-${i}`,
+        type: "general" as const,
+        title: imp.length > 50 ? imp.substring(0, 47) + "..." : imp,
+        description: imp,
+        confidence: 0.8,
+      })),
+      ...feedback.tips.map((tip, i) => ({
+        id: `tip-${nanoid(6)}-${i}`,
+        type: "general" as const,
+        title: tip.length > 50 ? tip.substring(0, 47) + "..." : tip,
+        description: tip,
+        confidence: 0.7,
+      })),
+    ];
+
+    if (suggestions.length > 0) {
+      const batch: SavedSuggestionBatch = {
+        id: nanoid(),
+        targetId: sceneId,
+        targetType: "scene",
+        projectId,
+        analysisType: "suggestions",
+        suggestions,
+        dismissedIds: [],
+        createdAt: new Date(),
+      };
+      await db.suggestionBatches.add(batch);
+    }
+  }
+
+  return projectId;
 }

@@ -68,17 +68,22 @@ export function WritingEditor({
 export function PracticeEditor({
   placeholder = "Start writing...",
   editable = true,
+  initialContent,
+  showToolbar = false,
   onContentChange,
   className,
 }: {
   placeholder?: string;
   editable?: boolean;
+  initialContent?: string;
+  showToolbar?: boolean;
   onContentChange?: (json: string, html: string, wordCount: number) => void;
   className?: string;
 }) {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: createEditorExtensions(placeholder),
+    content: initialContent ? JSON.parse(initialContent) : undefined,
     editable,
     editorProps: {
       attributes: {
@@ -100,10 +105,21 @@ export function PracticeEditor({
     }
   }, [editor, editable]);
 
+  // Update content when initialContent changes
+  useEffect(() => {
+    if (editor && initialContent) {
+      const currentContent = JSON.stringify(editor.getJSON());
+      if (currentContent !== initialContent) {
+        editor.commands.setContent(JSON.parse(initialContent));
+      }
+    }
+  }, [editor, initialContent]);
+
   if (!editor) return null;
 
   return (
     <div className={className}>
+      {showToolbar && <EditorToolbar editor={editor} />}
       <EditorContent editor={editor} />
       <WordCountBar editor={editor} />
     </div>

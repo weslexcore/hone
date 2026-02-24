@@ -63,6 +63,15 @@ function reviveDates<T>(record: T, tableName: string): T {
       result[field] = new Date(result[field] as string);
     }
   }
+  // Revive dates inside practice session rounds
+  if (tableName === "practiceSessions" && Array.isArray(result.rounds)) {
+    result.rounds = (result.rounds as Record<string, unknown>[]).map((round) => {
+      const r = { ...round };
+      if (typeof r.startedAt === "string") r.startedAt = new Date(r.startedAt as string);
+      if (typeof r.completedAt === "string") r.completedAt = new Date(r.completedAt as string);
+      return r;
+    });
+  }
   return result as T;
 }
 

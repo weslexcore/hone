@@ -433,6 +433,11 @@ export default function PracticePage() {
                         {formatDistanceToNow(session.createdAt, { addSuffix: true })}
                       </span>
                       <div className="flex items-center gap-2">
+                        {session.rounds && session.rounds.length > 1 && (
+                          <span className="text-[10px] text-text-muted bg-surface-overlay px-1.5 py-0.5 rounded">
+                            R{session.rounds.length}
+                          </span>
+                        )}
                         {session.score !== null && (
                           <span className={cn("text-sm font-semibold", scoreColor(session.score))}>
                             {session.score}

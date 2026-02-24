@@ -9,7 +9,15 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { useAI } from "@/providers/ai-provider";
-import { usePracticeSession, updatePracticeSession, deletePracticeSession } from "@/lib/db/hooks";
+import {
+  usePracticeSession,
+  updatePracticeSession,
+  deletePracticeSession,
+  startNewRound,
+  submitCurrentRound,
+  gradeCurrentRound,
+  convertSessionToProject,
+} from "@/lib/db/hooks";
 import { GENRES, PRACTICE_DURATIONS } from "@/lib/constants/genres";
 import { FOCUS_AREA_CATEGORIES } from "@/lib/constants/focus-areas";
 import {
@@ -20,6 +28,10 @@ import {
 import { stripCodeFences } from "@/lib/ai/client";
 import { useTimer } from "@/hooks/use-timer";
 import { PracticeEditor } from "@/components/editor/writing-editor";
+import { getCurrentRound, getLatestGradedRound } from "@/lib/practice/utils";
+import { VersionTimeline } from "@/components/practice/version-timeline";
+import { FeedbackPanel } from "@/components/practice/feedback-panel";
+import { ContinueDialog } from "@/components/practice/continue-dialog";
 import type { PracticeFeedback } from "@/types/practice";
 import {
   Clock,
@@ -42,6 +54,10 @@ import {
   Plus,
   Infinity as InfinityIcon,
   RefreshCw,
+  Play,
+  FolderOpen,
+  MessageSquare,
+  MessageSquareOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { PasteAIResponse } from "@/components/ai/paste-ai-response";
@@ -77,10 +93,20 @@ export default function PracticeSessionPage({
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showTimerDialog, setShowTimerDialog] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [showContinueDialog, setShowContinueDialog] = useState(false);
+  const [viewingRoundIndex, setViewingRoundIndex] = useState<number | null>(null);
+  const [showFeedbackPanel, setShowFeedbackPanel] = useState(true);
+  const [isConverting, setIsConverting] = useState(false);
   const hasStartedWriting = useRef(false);
   const timerAutoStarted = useRef(false);
 
   const isUntimed = session?.durationSeconds === 0;
+
+  // Round detection
+  const isMultiRound = !!(session?.rounds && session.rounds.length > 0);
+  const currentRoundData = session ? getCurrentRound(session) : null;
+  const previousGradedRound = session ? getLatestGradedRound(session) : null;
+  const isRevisionRound = !!(currentRoundData && currentRoundData.roundNumber > 1);
 
   // Escape exits fullscreen, Cmd+Shift+F toggles fullscreen
   useEffect(() => {
@@ -134,17 +160,26 @@ export default function PracticeSessionPage({
       router.push("/practice");
       return;
     }
-    await updatePracticeSession(sessionId, {
-      status: "submitted",
+
+    const data = {
       response: contentRef.current.json,
       responseHtml: contentRef.current.html,
       wordCount: contentRef.current.wordCount,
       actualSeconds: Math.round(timer.elapsed),
-      completedAt: new Date(),
-    });
+    };
+
+    if (isMultiRound) {
+      await submitCurrentRound(sessionId, data);
+    } else {
+      await updatePracticeSession(sessionId, {
+        ...data,
+        status: "submitted",
+        completedAt: new Date(),
+      });
+    }
     timer.pause();
     toast("Writing submitted!", "success");
-  }, [session, sessionId, timer, toast, router]);
+  }, [session, sessionId, timer, toast, router, isMultiRound]);
 
   const handleExtend = useCallback(
     async (seconds: number) => {
@@ -237,25 +272,43 @@ export default function PracticeSessionPage({
       return;
     }
 
+    // Build revision context if this is a round-based session
+    const revisionCtx =
+      isMultiRound && previousGradedRound && previousGradedRound.feedback
+        ? {
+            roundNumber: currentRoundData?.roundNumber ?? 2,
+            previousFeedback: {
+              overallScore: previousGradedRound.feedback.overallScore,
+              improvements: previousGradedRound.feedback.improvements,
+            },
+          }
+        : undefined;
+
     const { systemPrompt, userMessage } = practiceGradingPrompt(
       session.prompt,
       text,
       session.actualSeconds,
+      revisionCtx,
     );
 
     try {
       const result = await sendRequest(systemPrompt, userMessage);
       const feedback = JSON.parse(stripCodeFences(result)) as PracticeFeedback;
-      await updatePracticeSession(sessionId, {
-        status: "graded",
-        score: feedback.overallScore,
-        feedback,
-      });
+
+      if (isMultiRound) {
+        await gradeCurrentRound(sessionId, feedback);
+      } else {
+        await updatePracticeSession(sessionId, {
+          status: "graded",
+          score: feedback.overallScore,
+          feedback,
+        });
+      }
       toast("Writing graded!", "success");
     } catch {
       toast("Failed to grade writing", "error");
     }
-  }, [session, sessionId, sendRequest, toast]);
+  }, [session, sessionId, sendRequest, toast, isMultiRound, previousGradedRound, currentRoundData]);
 
   const handlePastedGrading = useCallback(
     async (data: unknown) => {
@@ -266,17 +319,21 @@ export default function PracticeSessionPage({
           toast("Invalid grading format", "error");
           return;
         }
-        await updatePracticeSession(sessionId, {
-          status: "graded",
-          score: feedback.overallScore,
-          feedback,
-        });
+        if (isMultiRound) {
+          await gradeCurrentRound(sessionId, feedback);
+        } else {
+          await updatePracticeSession(sessionId, {
+            status: "graded",
+            score: feedback.overallScore,
+            feedback,
+          });
+        }
         toast("Grading applied!", "success");
       } catch {
         toast("Failed to apply grading", "error");
       }
     },
-    [session, sessionId, toast],
+    [session, sessionId, toast, isMultiRound],
   );
 
   const handleDeleteSession = useCallback(async () => {
@@ -293,10 +350,22 @@ export default function PracticeSessionPage({
     div.innerHTML = session.responseHtml || "";
     const text = div.textContent || "";
 
+    const revisionCtx =
+      isMultiRound && previousGradedRound && previousGradedRound.feedback
+        ? {
+            roundNumber: currentRoundData?.roundNumber ?? 2,
+            previousFeedback: {
+              overallScore: previousGradedRound.feedback.overallScore,
+              improvements: previousGradedRound.feedback.improvements,
+            },
+          }
+        : undefined;
+
     const { systemPrompt, userMessage } = practiceGradingPrompt(
       session.prompt,
       text,
       session.actualSeconds,
+      revisionCtx,
     );
 
     const formatted = formatPromptForCopy("grading", systemPrompt, userMessage);
@@ -304,7 +373,34 @@ export default function PracticeSessionPage({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast("Grading prompt copied", "success");
-  }, [session, toast]);
+  }, [session, toast, isMultiRound, previousGradedRound, currentRoundData]);
+
+  const handleContinueRound = useCallback(
+    async (durationSeconds: number) => {
+      if (!session) return;
+      await startNewRound(sessionId, durationSeconds);
+      setShowContinueDialog(false);
+      setViewingRoundIndex(null);
+      hasStartedWriting.current = false;
+      timerAutoStarted.current = false;
+      toast("New round started!", "success");
+    },
+    [session, sessionId, toast],
+  );
+
+  const handleConvertToProject = useCallback(async () => {
+    if (!session) return;
+    setIsConverting(true);
+    try {
+      const projectId = await convertSessionToProject(sessionId);
+      toast("Converted to project!", "success");
+      router.push(`/projects/${projectId}`);
+    } catch {
+      toast("Failed to convert to project", "error");
+    } finally {
+      setIsConverting(false);
+    }
+  }, [session, sessionId, toast, router]);
 
   if (!session) {
     return (
@@ -316,6 +412,13 @@ export default function PracticeSessionPage({
 
   // Resolve genre labels — handle both built-in IDs and custom genre strings
   const genreLabels = session.genres.map((id) => GENRES.find((g) => g.id === id)?.label || id);
+
+  // For viewing specific rounds in graded state
+  const displayRoundIdx = viewingRoundIndex ?? (session.rounds ? session.rounds.length - 1 : 0);
+  const displayRound = session.rounds?.[displayRoundIdx] ?? null;
+  const displayFeedback = displayRound?.feedback ?? session.feedback;
+  const displayScore = displayRound?.score ?? session.score;
+  const displayHtml = displayRound?.responseHtml ?? session.responseHtml;
 
   // In-progress: show timer + editor
   if (session.status === "in_progress") {
@@ -372,6 +475,15 @@ export default function PracticeSessionPage({
               )}
             </div>
             <div className="flex items-center gap-2">
+              {isRevisionRound && previousGradedRound?.feedback && (
+                <button
+                  onClick={() => setShowFeedbackPanel(!showFeedbackPanel)}
+                  className="p-1.5 rounded text-text-muted hover:text-text-primary transition-colors"
+                  title={showFeedbackPanel ? "Hide feedback" : "Show feedback"}
+                >
+                  {showFeedbackPanel ? <MessageSquareOff size={15} /> : <MessageSquare size={15} />}
+                </button>
+              )}
               <button
                 onClick={() => setShowPrompt(!showPrompt)}
                 className="p-1.5 rounded text-text-muted hover:text-text-primary transition-colors"
@@ -513,12 +625,23 @@ export default function PracticeSessionPage({
           </div>
         )}
 
+        {/* Previous round feedback (revision rounds only) */}
+        {isRevisionRound && showFeedbackPanel && previousGradedRound?.feedback && (
+          <FeedbackPanel
+            feedback={previousGradedRound.feedback}
+            roundNumber={previousGradedRound.roundNumber}
+            score={previousGradedRound.score}
+          />
+        )}
+
         {/* Editor */}
         <div className="flex-1 overflow-y-auto">
           <PracticeEditor
             placeholder="Start writing..."
             editable={!timer.isComplete}
             onContentChange={handleContentChange}
+            initialContent={isRevisionRound ? currentRoundData?.response : undefined}
+            showToolbar={isRevisionRound}
           />
         </div>
 
@@ -602,17 +725,26 @@ export default function PracticeSessionPage({
           </Button>
         </div>
 
+        {/* Version Timeline */}
+        {isMultiRound && session.rounds && session.rounds.length > 1 && (
+          <VersionTimeline
+            rounds={session.rounds}
+            activeRoundIndex={viewingRoundIndex ?? session.rounds.length - 1}
+            onSelectRound={setViewingRoundIndex}
+          />
+        )}
+
         {/* Prompt */}
         <Card className="mb-6">
           <p className="text-sm text-text-secondary font-serif italic leading-relaxed">
             {session.prompt}
           </p>
           <div className="flex items-center gap-3 mt-3 text-xs text-text-muted">
-            <span>{session.wordCount} words</span>
+            <span>{displayRound?.wordCount ?? session.wordCount} words</span>
             <span>
-              {session.durationSeconds === 0
+              {(displayRound?.durationSeconds ?? session.durationSeconds) === 0
                 ? "Untimed"
-                : `${Math.round(session.actualSeconds / 60)} min`}
+                : `${Math.round((displayRound?.actualSeconds ?? session.actualSeconds) / 60)} min`}
             </span>
             {genreLabels.map((g) => (
               <Badge key={g} variant="muted" className="text-[10px]">
@@ -683,24 +815,56 @@ export default function PracticeSessionPage({
         )}
 
         {/* Feedback */}
-        {session.feedback && (
+        {displayFeedback && (
           <div className="space-y-4">
             {/* Score */}
             <Card className="text-center py-6">
               <div
                 className={cn(
                   "text-5xl font-bold mb-1",
-                  session.score !== null && session.score >= 80
+                  displayScore !== null && displayScore !== undefined && displayScore >= 80
                     ? "text-success"
-                    : session.score !== null && session.score >= 60
+                    : displayScore !== null && displayScore !== undefined && displayScore >= 60
                       ? "text-accent"
                       : "text-danger",
                 )}
               >
-                {session.score}
+                {displayScore}
               </div>
               <p className="text-sm text-text-muted">out of 100</p>
             </Card>
+
+            {/* Continue Practicing & Convert to Project buttons */}
+            {session.status === "graded" && (
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowContinueDialog(true)}
+                  className="flex-1"
+                >
+                  <Play size={14} />
+                  Continue Practicing
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleConvertToProject}
+                  disabled={isConverting}
+                  className="flex-1"
+                >
+                  {isConverting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Converting...
+                    </>
+                  ) : (
+                    <>
+                      <FolderOpen size={14} />
+                      Convert to Project
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
 
             {/* Strengths */}
             <Card>
@@ -709,7 +873,7 @@ export default function PracticeSessionPage({
                 <h3 className="text-sm font-medium text-text-primary">Strengths</h3>
               </div>
               <ul className="space-y-1.5">
-                {session.feedback.strengths.map((s, i) => (
+                {displayFeedback.strengths.map((s, i) => (
                   <li key={i} className="text-sm text-text-secondary flex items-start gap-2">
                     <span className="text-success mt-0.5">+</span>
                     {s}
@@ -725,7 +889,7 @@ export default function PracticeSessionPage({
                 <h3 className="text-sm font-medium text-text-primary">Areas for Improvement</h3>
               </div>
               <ul className="space-y-1.5">
-                {session.feedback.improvements.map((s, i) => (
+                {displayFeedback.improvements.map((s, i) => (
                   <li key={i} className="text-sm text-text-secondary flex items-start gap-2">
                     <span className="text-accent mt-0.5">-</span>
                     {s}
@@ -741,7 +905,7 @@ export default function PracticeSessionPage({
                 <h3 className="text-sm font-medium text-text-primary">Tips & Tricks</h3>
               </div>
               <ul className="space-y-1.5">
-                {session.feedback.tips.map((s, i) => (
+                {displayFeedback.tips.map((s, i) => (
                   <li key={i} className="text-sm text-text-secondary flex items-start gap-2">
                     <span className="text-accent mt-0.5">*</span>
                     {s}
@@ -757,14 +921,14 @@ export default function PracticeSessionPage({
                 <h3 className="text-sm font-medium text-text-primary">Detailed Feedback</h3>
               </div>
               <p className="text-sm text-text-secondary leading-relaxed font-serif whitespace-pre-wrap">
-                {session.feedback.detailedNotes}
+                {displayFeedback.detailedNotes}
               </p>
             </Card>
           </div>
         )}
 
         {/* Response preview */}
-        {session.responseHtml && (
+        {displayHtml && (
           <div className="mt-6">
             <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-3">
               Your Response
@@ -772,11 +936,18 @@ export default function PracticeSessionPage({
             <Card>
               <div
                 className="text-sm text-text-secondary font-serif leading-relaxed prose-invert"
-                dangerouslySetInnerHTML={{ __html: session.responseHtml }}
+                dangerouslySetInnerHTML={{ __html: displayHtml }}
               />
             </Card>
           </div>
         )}
+
+        {/* Continue Dialog */}
+        <ContinueDialog
+          open={showContinueDialog}
+          onClose={() => setShowContinueDialog(false)}
+          onStart={handleContinueRound}
+        />
 
         {/* Delete Session Confirmation */}
         <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>

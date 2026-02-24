@@ -89,10 +89,18 @@ The prompt should:
   return { systemPrompt, userMessage };
 }
 
-export function practiceGradingPrompt(prompt: string, response: string, durationSeconds: number) {
+export function practiceGradingPrompt(
+  prompt: string,
+  response: string,
+  durationSeconds: number,
+  revisionContext?: {
+    roundNumber: number;
+    previousFeedback: { overallScore: number; improvements: string[] };
+  },
+) {
   const minutes = Math.round(durationSeconds / 60);
 
-  const systemPrompt = `You are a creative writing instructor grading a timed writing exercise. The writer had ${minutes} minutes to respond to a prompt.
+  let systemPrompt = `You are a creative writing instructor grading a timed writing exercise. The writer had ${minutes} minutes to respond to a prompt.
 
 Evaluate the writing and return a JSON object with these fields:
 - overallScore: number 0-100
@@ -101,8 +109,13 @@ Evaluate the writing and return a JSON object with these fields:
 - tips: array of 2-3 actionable writing tips based on this piece (strings)
 - detailedNotes: 2-3 paragraph detailed feedback
 
-Be encouraging but honest. Account for the time constraint. Focus on craft elements like voice, imagery, pacing, character, and tension.
-Return ONLY the JSON object, no other text.`;
+Be encouraging but honest. Account for the time constraint. Focus on craft elements like voice, imagery, pacing, character, and tension.`;
+
+  if (revisionContext) {
+    systemPrompt += `\n\nThis is revision round ${revisionContext.roundNumber}. The writer scored ${revisionContext.previousFeedback.overallScore}/100 in the previous round. Their previous feedback flagged these areas for improvement:\n${revisionContext.previousFeedback.improvements.map((imp, i) => `${i + 1}. ${imp}`).join("\n")}\n\nEvaluate whether the writer addressed these specific areas. Note improvements from the previous round and any new issues that emerged in your detailedNotes.`;
+  }
+
+  systemPrompt += `\nReturn ONLY the JSON object, no other text.`;
 
   const userMessage = `Prompt: "${prompt}"\n\nWriter's response:\n\n${response}`;
 
