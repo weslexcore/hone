@@ -406,7 +406,7 @@ export default function PracticeSessionPage({
     try {
       const projectId = await convertSessionToProject(sessionId);
       toast("Converted to project!", "success");
-      router.push(`/projects/${projectId}`);
+      router.push(`/project/${projectId}`);
     } catch {
       toast("Failed to convert to project", "error");
     } finally {

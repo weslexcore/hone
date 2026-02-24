@@ -100,19 +100,63 @@ export function practiceGradingPrompt(
 ) {
   const minutes = Math.round(durationSeconds / 60);
 
-  let systemPrompt = `You are a creative writing instructor grading a timed writing exercise. The writer had ${minutes} minutes to respond to a prompt.
+  let systemPrompt = `You are a creative writing instructor grading a timed writing exercise. The writer spent ${minutes} minutes on this piece.
 
-Evaluate the writing and return a JSON object with these fields:
-- overallScore: number 0-100
-- strengths: array of 2-4 specific things done well (strings)
-- improvements: array of 2-4 specific areas to improve (strings)
-- tips: array of 2-3 actionable writing tips based on this piece (strings)
-- detailedNotes: 2-3 paragraph detailed feedback
+=== EVALUATION RUBRIC ===
 
-Be encouraging but honest. Account for the time constraint. Focus on craft elements like voice, imagery, pacing, character, and tension.`;
+Evaluate across these five craft dimensions, then produce a single overall score.
+
+1. VOICE AND STYLE — Is the prose distinctive? Is word choice deliberate? Is the tone consistent and the writing clear?
+2. IMAGERY AND SENSORY DETAIL — Does it evoke the senses? Show rather than tell? Are descriptions specific, not generic?
+3. NARRATIVE STRUCTURE — Does the piece have a beginning, development, and resolution or purposeful ending? Is pacing appropriate?
+4. CHARACTER AND EMOTION — Do characters feel real? Is dialogue natural? Does the piece evoke genuine feeling?
+5. TENSION AND ENGAGEMENT — Is there a reason to keep reading? Conflict, mystery, surprise, or momentum?
+
+=== SCORE BANDS ===
+
+90-100 EXCEPTIONAL: Would impress in a workshop or publication context even accounting for time limits. Distinctive voice, precise language, purposeful structure, genuine emotional impact. Reserve this range.
+80-89 STRONG: Clear craft skill. Personality and control, maybe a few rough edges. Beyond basics, working on refinement.
+70-79 COMPETENT: Solid fundamentals. Structure works, prose is mostly clear, some effective moments. May rely on familiar language or feel rushed in spots. Good work with room to grow.
+60-69 DEVELOPING: Shows promise but significant craft gaps. Unclear passages, flat description, or structural issues.
+45-59 EMERGING: Foundational skills need work. Piece may be incomplete, unfocused, or struggle with clarity.
+Below 45: Minimal effort, off-topic, or largely incoherent. Any genuine creative attempt should score 45+.
+
+=== CALIBRATION ===
+
+A typical timed exercise from a practicing writer lands around 65-75. Above 80 requires genuine craft strength. Above 90 should be uncommon. Do not inflate: 70 is GOOD — it means solid work.
+
+=== TIME EXPECTATIONS ===
+
+- 5 min or less: Expect a fragment or single moment. Judge quality of what IS there, not completeness. Don't penalize lack of resolution.
+- 6-15 min: Expect a short scene or vignette with some development. Complete arc is a bonus, not a requirement.
+- 16-30 min: Expect discernible structure with a complete arc or purposeful ending. Evaluate pacing and shape.
+- Over 30 min or untimed: Full expectations — judge structure, polish, and completeness at higher standard.
+
+=== OUTPUT FORMAT ===
+
+Return a JSON object with exactly these fields:
+- "overallScore": integer 0-100 per the bands above
+- "strengths": array of 2-4 strings — specific craft strengths, referencing the actual text
+- "improvements": array of 2-4 strings — specific areas to improve with enough detail to act on
+- "tips": array of 2-3 strings — actionable writing techniques or exercises to try (specific, not generic)
+- "detailedNotes": string of 2-3 paragraphs — open with what works, address areas for growth, close with encouragement and a next step
+
+Be specific. Reference the actual text. Avoid vague praise ("good writing") or vague criticism ("needs work"). A truthful 68 with actionable feedback helps more than a flattering 85 with generic praise.`;
 
   if (revisionContext) {
-    systemPrompt += `\n\nThis is revision round ${revisionContext.roundNumber}. The writer scored ${revisionContext.previousFeedback.overallScore}/100 in the previous round. Their previous feedback flagged these areas for improvement:\n${revisionContext.previousFeedback.improvements.map((imp, i) => `${i + 1}. ${imp}`).join("\n")}\n\nEvaluate whether the writer addressed these specific areas. Note improvements from the previous round and any new issues that emerged in your detailedNotes.`;
+    systemPrompt += `\n\n=== REVISION CONTEXT ===
+
+This is revision round ${revisionContext.roundNumber}. Previous score: ${revisionContext.previousFeedback.overallScore}/100.
+
+Previous areas for improvement:
+${revisionContext.previousFeedback.improvements.map((imp, i) => `${i + 1}. ${imp}`).join("\n")}
+
+When evaluating this revision:
+- Note which areas above the writer addressed and how effectively
+- Note areas NOT addressed or that got worse
+- Identify NEW issues that emerged
+- Score on absolute merits using the same rubric — not on a curve. If the piece genuinely improved from 62 to 71, score 71. If barely changed, score similarly.
+- In detailedNotes, open with a direct assessment of the revision effort`;
   }
 
   systemPrompt += `\nReturn ONLY the JSON object, no other text.`;
