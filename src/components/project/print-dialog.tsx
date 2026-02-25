@@ -70,19 +70,13 @@ export function PrintDialog({ open, onClose, projectId, projectTitle }: PrintDia
   const [options, setOptions] = useState<PrintOptions>(defaultPrintOptions);
   const [loading, setLoading] = useState(false);
 
-  const update = useCallback(
-    <K extends keyof PrintOptions>(key: K, value: PrintOptions[K]) => {
-      setOptions((prev) => ({ ...prev, [key]: value }));
-    },
-    [],
-  );
+  const update = useCallback(<K extends keyof PrintOptions>(key: K, value: PrintOptions[K]) => {
+    setOptions((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   const generate = useCallback(async () => {
     const { chapters, scenesByChapter } = await fetchPrintData(projectId);
-    return generatePrintHtml(
-      { title: projectTitle, chapters, scenesByChapter },
-      options,
-    );
+    return generatePrintHtml({ title: projectTitle, chapters, scenesByChapter }, options);
   }, [projectId, projectTitle, options]);
 
   const handlePrint = useCallback(async () => {
@@ -116,7 +110,11 @@ export function PrintDialog({ open, onClose, projectId, projectTitle }: PrintDia
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${projectTitle.replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase()}.html`;
+      a.download = `${projectTitle
+        .replace(/[^a-zA-Z0-9\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .toLowerCase()}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
