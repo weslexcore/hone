@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   PenTool,
   Timer,
+  RefreshCw,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +21,7 @@ import { useSidebar } from "@/providers/sidebar-provider";
 const navItems = [
   { href: "/dashboard", label: "Projects", icon: LayoutDashboard },
   { href: "/practice", label: "Practice", icon: Timer },
+  { href: "/sync", label: "Sync", icon: RefreshCw },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
