@@ -51,8 +51,14 @@ import {
   HardDrive,
   Download,
   Upload,
+  Users,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { useAuth } from "@/providers/auth-provider";
+import { useUsage } from "@/hooks/use-usage";
+import Link from "next/link";
 
 /** Small swatch showing the theme's surface + text + accent colors */
 function ThemeSwatch({ themeId }: { themeId: ThemeId }) {
@@ -601,6 +607,143 @@ function OllamaSection() {
   );
 }
 
+function UsageBar({ used, limit, label }: { used: number; limit: number; label: string }) {
+  const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+  const isNearLimit = pct >= 80;
+  const isAtLimit = pct >= 100;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-text-muted">{label}</span>
+        <span
+          className={cn(
+            "text-xs font-medium",
+            isAtLimit ? "text-danger" : isNearLimit ? "text-warning" : "text-text-secondary",
+          )}
+        >
+          {used} / {limit}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-surface-overlay overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            isAtLimit ? "bg-danger" : isNearLimit ? "bg-warning" : "bg-accent",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SharedAccessSection() {
+  const { user, isSupabaseConfigured, signOut } = useAuth();
+  const { serverKeys, isUsingSharedKey } = useAI();
+  const { usage, isLoading: usageLoading } = useUsage();
+
+  const anyServerKey = serverKeys.anthropic || serverKeys.openai || serverKeys.ollama;
+
+  // Don't show this section if no backend services are configured
+  if (!isSupabaseConfigured && !anyServerKey) return null;
+
+  const availableProviders: string[] = [];
+  if (serverKeys.anthropic) availableProviders.push("Anthropic");
+  if (serverKeys.openai) availableProviders.push("OpenAI");
+  if (serverKeys.ollama) availableProviders.push("Ollama");
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-medium text-text-secondary uppercase tracking-wider mb-4">
+        <span className="flex items-center gap-2">
+          <Users size={14} />
+          Shared Access
+        </span>
+      </h2>
+
+      <Card className="space-y-4">
+        {user ? (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-text-primary">
+                  Signed in as{" "}
+                  <strong className="text-accent">{user.email}</strong>
+                </p>
+                {isUsingSharedKey && (
+                  <p className="text-[10px] text-text-muted mt-0.5">
+                    Using shared AI key — your own key takes priority if configured
+                  </p>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" onClick={signOut}>
+                <LogOut size={14} />
+                Sign out
+              </Button>
+            </div>
+
+            {anyServerKey && (
+              <div>
+                <p className="text-xs text-text-muted mb-1">Available shared providers</p>
+                <div className="flex gap-1.5">
+                  {availableProviders.map((name) => (
+                    <span
+                      key={name}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-success-muted text-success"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {usage && (
+              <div className="space-y-2">
+                <p className="text-xs text-text-muted">Shared key usage</p>
+                <UsageBar
+                  used={usage.daily.used}
+                  limit={usage.daily.limit}
+                  label="Today"
+                />
+                <UsageBar
+                  used={usage.monthly.used}
+                  limit={usage.monthly.limit}
+                  label="This month"
+                />
+              </div>
+            )}
+            {usageLoading && !usage && (
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <Loader2 size={12} className="animate-spin" />
+                Loading usage...
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-2">
+            <p className="text-sm text-text-primary mb-1">
+              Sign in to use AI without your own API key
+            </p>
+            {anyServerKey && (
+              <p className="text-xs text-text-muted mb-3">
+                {availableProviders.join(", ")} available via shared access
+              </p>
+            )}
+            <Link href="/login">
+              <Button variant="primary" size="sm">
+                <LogIn size={14} />
+                Sign in
+              </Button>
+            </Link>
+          </div>
+        )}
+      </Card>
+    </section>
+  );
+}
+
 function DataManagementSection() {
   const { toast } = useToast();
   const [includeSettings, setIncludeSettings] = useState(true);
@@ -801,8 +944,9 @@ function DataManagementSection() {
 }
 
 export default function SettingsPage() {
-  const { config, setProvider, setEnabledGlobally } = useAI();
+  const { config, setProvider, setEnabledGlobally, serverKeys } = useAI();
   const { theme, setTheme } = useTheme();
+  const anyServerKey = serverKeys.anthropic || serverKeys.openai || serverKeys.ollama;
 
   return (
     <div className="p-4 md:p-8 max-w-2xl mx-auto">
@@ -915,6 +1059,9 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Shared Access */}
+        <SharedAccessSection />
+
         {/* Data Management */}
         <DataManagementSection />
 
@@ -923,10 +1070,20 @@ export default function SettingsPage() {
           <Card className="bg-accent-muted border-accent/20">
             <h3 className="text-sm font-medium text-accent mb-1">No API key? No problem.</h3>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Without an API key, you can still use all AI features via the &ldquo;Copy for
-              AI&rdquo; button. It copies a formatted prompt to your clipboard that you can paste
-              into Claude.ai, ChatGPT, or any other AI assistant. You can also run models locally
-              with Ollama.
+              {anyServerKey ? (
+                <>
+                  Sign in to use AI features with the shared key, or use the &ldquo;Copy for
+                  AI&rdquo; button to paste prompts into Claude.ai, ChatGPT, or any other AI
+                  assistant. You can also add your own API key or run models locally with Ollama.
+                </>
+              ) : (
+                <>
+                  Without an API key, you can still use all AI features via the &ldquo;Copy for
+                  AI&rdquo; button. It copies a formatted prompt to your clipboard that you can paste
+                  into Claude.ai, ChatGPT, or any other AI assistant. You can also run models locally
+                  with Ollama.
+                </>
+              )}
             </p>
           </Card>
         </section>

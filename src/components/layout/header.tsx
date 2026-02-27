@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight, Menu, Search } from "lucide-react";
+import { ChevronRight, Menu, Search, LogIn, User } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useProject, useChapter, useScene } from "@/lib/db/hooks";
 import { useSidebar } from "@/providers/sidebar-provider";
 import { GlobalSearch } from "@/components/search/global-search";
+import { useAuth } from "@/providers/auth-provider";
 
 /**
  * Build breadcrumbs from the URL. For project routes we resolve actual
@@ -76,6 +77,7 @@ export function Header() {
   const crumbs = useBreadcrumbs();
   const { setMobileOpen } = useSidebar();
   const [searchOpen, setSearchOpen] = useState(false);
+  const { user, isSupabaseConfigured } = useAuth();
 
   // Global keyboard shortcut: Cmd/Ctrl+K
   useEffect(() => {
@@ -120,16 +122,38 @@ export function Header() {
           ))}
         </nav>
 
-        <button
-          onClick={() => setSearchOpen(true)}
-          className="ml-auto flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-muted hover:text-text-secondary hover:border-border-subtle transition-colors"
-        >
-          <Search size={14} />
-          <span className="hidden sm:inline">Search</span>
-          <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-surface-overlay px-1.5 text-[10px] font-medium">
-            &#8984;K
-          </kbd>
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-muted hover:text-text-secondary hover:border-border-subtle transition-colors"
+          >
+            <Search size={14} />
+            <span className="hidden sm:inline">Search</span>
+            <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border bg-surface-overlay px-1.5 text-[10px] font-medium">
+              &#8984;K
+            </kbd>
+          </button>
+
+          {isSupabaseConfigured && (
+            user ? (
+              <Link
+                href="/settings"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-accent-muted text-accent hover:bg-accent/20 transition-colors"
+                title={user.email || "Account"}
+              >
+                <User size={14} />
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-text-muted hover:text-text-secondary hover:border-border-subtle transition-colors"
+              >
+                <LogIn size={14} />
+                <span className="hidden sm:inline">Sign in</span>
+              </Link>
+            )
+          )}
+        </div>
       </header>
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />

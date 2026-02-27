@@ -1,23 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { checkAndLogUsage } from "@/lib/usage/check-limits";
 
 export async function POST(req: NextRequest) {
   try {
-    const { baseUrl, model, systemPrompt, userMessage, ollamaApiKey } = await req.json();
+    const { baseUrl, model, systemPrompt, userMessage, ollamaApiKey, useSharedKey } =
+      await req.json();
 
-    const ollamaUrl = (baseUrl || "http://localhost:11434").replace(/\/+$/, "");
     const ollamaModel = model || "llama3.2";
+    let ollamaUrl = (baseUrl || "http://localhost:11434").replace(/\/+$/, "");
+    let resolvedApiKey = ollamaApiKey;
 
-    // Build headers — add Authorization for Ollama Cloud when an API key is provided
+    // If requesting shared key mode, use server-side Ollama config
+    if (useSharedKey && !baseUrl) {
+      const serverUrl = process.env.OLLAMA_BASE_URL;
+      if (!serverUrl) {
+        return NextResponse.json(
+          { error: "Server Ollama is not configured." },
+          { status: 400 },
+        );
+      }
+
+      // Verify authentication
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return NextResponse.json(
+          { error: "Sign in to use the shared AI key, or provide your own Ollama configuration." },
+          { status: 401 },
+        );
+      }
+
+      // Check usage limits
+      const usage = await checkAndLogUsage(user.id, "ollama", ollamaModel);
+      if (!usage.allowed) {
+        return NextResponse.json({ error: usage.reason, usage }, { status: 429 });
+      }
+
+      ollamaUrl = serverUrl.replace(/\/+$/, "");
+      resolvedApiKey = process.env.OLLAMA_API_KEY || undefined;
+    }
+
+    // Build headers
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (ollamaApiKey) {
-      headers["Authorization"] = `Bearer ${ollamaApiKey}`;
+    if (resolvedApiKey) {
+      headers["Authorization"] = `Bearer ${resolvedApiKey}`;
     }
 
-    // Estimate token count to set an adequate context window.
-    // Many Ollama models default to 2048 tokens which is too small for prompts
-    // that include full user writing.
     const estimatedTokens = Math.ceil(
       ((systemPrompt?.length || 0) + (userMessage?.length || 0)) / 4,
     );
@@ -53,7 +87,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ content });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Ollama request failed";
-    // Common: connection refused when Ollama isn't running locally
     if (message.includes("ECONNREFUSED") || message.includes("fetch failed")) {
       return NextResponse.json(
         {

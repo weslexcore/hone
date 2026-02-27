@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.98.0",
     "@tiptap/extension-bubble-menu": "^3.20.0",
     "@tiptap/extension-character-count": "^3.20.0",
     "@tiptap/extension-floating-menu": "^3.20.0",

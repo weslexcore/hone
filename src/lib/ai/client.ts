@@ -168,15 +168,40 @@ export async function fetchOllamaModelsDirect(
     .sort((a: string, b: string) => a.localeCompare(b));
 }
 
+/**
+ * Fetch which server-side AI providers are configured.
+ * Cached in-memory for the lifetime of the page.
+ */
+let serverStatusCache: { anthropic: boolean; openai: boolean; ollama: boolean } | null = null;
+
+export async function fetchServerStatus(): Promise<{
+  anthropic: boolean;
+  openai: boolean;
+  ollama: boolean;
+  limits: { daily: number; monthly: number };
+}> {
+  if (serverStatusCache) {
+    return { ...serverStatusCache, limits: { daily: 30, monthly: 500 } };
+  }
+  const res = await fetch("/api/ai/status");
+  const data = await res.json();
+  serverStatusCache = {
+    anthropic: data.anthropic,
+    openai: data.openai,
+    ollama: data.ollama,
+  };
+  return data;
+}
+
 export async function sendAIRequest(
   provider: AIProvider,
   apiKey: string,
   request: AIRequest,
-  options?: { model?: string; ollamaApiKey?: string },
+  options?: { model?: string; ollamaApiKey?: string; useSharedKey?: boolean },
 ): Promise<string> {
   // For Ollama with a local URL, call directly from the browser
   // (server-side proxy can't reach localhost when deployed)
-  if (provider === "ollama") {
+  if (provider === "ollama" && !options?.useSharedKey) {
     const baseUrl = apiKey || "http://localhost:11434";
     if (isLocalUrl(baseUrl)) {
       return sendOllamaDirectRequest(
@@ -197,17 +222,25 @@ export async function sendAIRequest(
 
   const endpoint = endpoints[provider];
 
-  const body: Record<string, string | undefined> = {
-    apiKey,
+  const body: Record<string, string | boolean | undefined> = {
     systemPrompt: request.systemPrompt,
     userMessage: request.userMessage,
     model: options?.model,
   };
 
-  // For Ollama, apiKey is the base URL. Also pass optional cloud API key.
-  if (provider === "ollama") {
-    body.baseUrl = apiKey;
-    body.ollamaApiKey = options?.ollamaApiKey;
+  if (options?.useSharedKey) {
+    // Don't send apiKey — let the server use its env var key.
+    // For Ollama shared key, signal that we want the server config.
+    if (provider === "ollama") {
+      body.useSharedKey = true;
+    }
+  } else {
+    // User's own key
+    body.apiKey = apiKey;
+    if (provider === "ollama") {
+      body.baseUrl = apiKey;
+      body.ollamaApiKey = options?.ollamaApiKey;
+    }
   }
 
   const response = await fetch(endpoint, {
